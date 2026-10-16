@@ -1,7 +1,7 @@
 {
-  "version": "2.18.1",
-  "file": "versiones/base-app-2.18.1.zip",
-  "sha256": "9c3a0b563de976f3abc9be6161dbfa0123995fce8993a9cc052bb0fedc25a7bd",
-  "size": 426522,
-  "notes": "Novedades 2.18.1\n- 5 mini juegos nuevos: Memotest, Viborita, Ta-te-ti, Adiviná la palabra y Bloques.\n- Mahjong con fichas más nítidas.\n- Explorador: las fotos no se salen de su lugar.\n- \"Escritorio de Windows\" en el Inicio de Base.\n- Tablet: la cabecera ya no se encima."
+  "version": "2.18.2",
+  "file": "versiones/base-app-2.18.2.zip",
+  "sha256": "2dab38410e6b1231a76650c7e262275be6250df45af1e37e993bb0bde197df98",
+  "size": 426888,
+  "notes": "Novedades 2.18.2\n- 5 mini juegos nuevos: Memotest, Viborita, Ta-te-ti, Adiviná la palabra y Bloques.\n- Mahjong con fichas más nítidas.\n- Explorador: las fotos no se salen de su lugar.\n- \"Escritorio de Windows\" en el Inicio de Base.\n- Tablet: la cabecera ya no se encima.\n- Arreglo: la actualización automática ahora vuelve a abrir Base."
 }
