@@ -1,0 +1,7 @@
+{
+  "version": "2.18.0",
+  "file": "versiones/base-app-2.18.0.zip",
+  "sha256": "eb04d7e5e4858e585881fd69842b1d95fae7f9668f929e022b78d85c4854ce8d",
+  "size": 412248,
+  "notes": "Novedades 2.18\n- Se actualiza sola desde acá.\n- Base como escritorio de Windows (siempre al fondo, aparece con Windows+D) y opción de esconder la barra de tareas.\n- Panel para la tablet (Personalizar > Tablet).\n- Tarjeta Luces (lamparitas Smart Life por el WiFi de casa).\n- Tarjeta Calculadora.\n- Instalador sin ventana colgada.\n"
+}
