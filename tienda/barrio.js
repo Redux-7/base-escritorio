@@ -92,6 +92,22 @@
       for (const a of apps) { const d = Math.abs(angDiff(Math.atan2(a.uy, a.ux) - a0)); a.g = (d < Math.PI / 4 || d > 3 * Math.PI / 4) ? 0 : 1; }
       G.lights.set(n, { n, x, y, apps, maxW, off: (li++ * 7.3) % 30 });
     }
+    // carteles con el nombre de las calles en las esquinas
+    G.signs = [];
+    for (const n of corners) {
+      const seen = new Map();
+      for (const [ri, i] of links.get(n)) { const r = roads[ri]; if (!r.n || r.k >= 7 || seen.has(r.n)) continue; const j = i < r.p.length - 1 ? i + 1 : i - 1; const [x0, y0] = r.p[i], [x1, y1] = r.p[j]; seen.set(r.n, { n: r.n, ang: Math.atan2(y1 - y0, x1 - x0), w: r.w }); }
+      if (seen.size < 1) continue;
+      const [x, y] = nodePos(n), list = [...seen.values()].slice(0, 2);
+      let mw = 0; for (const [ri] of links.get(n)) mw = Math.max(mw, roads[ri].w);
+      // va en la vereda, en diagonal a la esquina
+      const a1 = list[0].ang, a2 = list[1] ? list[1].ang : a1 + Math.PI / 2;
+      let dx = Math.cos(a1) + Math.cos(a2), dy = Math.sin(a1) + Math.sin(a2), L = Math.hypot(dx, dy) || 1;
+      const off = mw / 2 + 2.6;
+      G.signs.push({ x: x + dx / L * off * 1.25, y: y + dy / L * off * 1.25, names: list.map(o => o.n) });
+    }
+    // faroles en las esquinas (se ven de noche)
+    G.lamps = corners.map(n => { const [x, y] = nodePos(n); let mw = 0; for (const [ri] of links.get(n)) mw = Math.max(mw, roads[ri].w); return [x + mw / 2 + 1.5, y - mw / 2 - 1.5]; });
     // árboles en las veredas
     G.trees = [];
     roads.forEach((r, ri) => {
@@ -126,6 +142,10 @@
 
     let G = null, mapId = H.get().map || null, mode = H.get().mode === 'libre' ? 'libre' : 'entregas';
     let me, cars = [], keys = {}, raf = 0, lastT = 0, state = 'menu', clock = 0, skids = [], toastT = 0;
+    const WX = { dia: 'Día', noche: 'Noche', lluvia: 'Lluvia', noche_lluvia: 'Noche con lluvia' };
+    let wx = WX[H.get().wx] ? H.get().wx : 'dia';
+    const isNight = () => wx === 'noche' || wx === 'noche_lluvia', isRain = () => wx === 'lluvia' || wx === 'noche_lluvia';
+    let drops = [], dark = null, blink = { l: false, r: false, haz: false, a0: 0 }, headOn = false;
     let stats = { red: 0, crash: 0, done: 0, pts: 0 }, job = null, zoom = 5, camX = 0, camY = 0, mini = null;
 
     // ---------- mosaicos del mapa (se dibujan una vez y se reusan) ----------
@@ -204,18 +224,6 @@
         path(b.p, true); g.fillStyle = ROOF[(b.c * ROOF.length) | 0]; g.fill();
         g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 0.3; g.stroke();
       }
-      // nombres de calles (solo los tramos que entran enteros en el mosaico)
-      g.font = '600 2.6px system-ui, Segoe UI, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      for (const r of near) {
-        if (!r.n || r.k >= 7) continue;
-        for (let i = 0; i < r.p.length - 1; i++) {
-          const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay);
-          const mx = (ax + bx) / 2, my = (ay + by) / 2;
-          if (L < 45 || mx < x0 + 18 || mx > x1 - 18 || my < y0 + 18 || my > y1 - 18) continue;
-          let an = Math.atan2(by - ay, bx - ax); if (an > Math.PI / 2) an -= Math.PI; if (an < -Math.PI / 2) an += Math.PI;
-          g.save(); g.translate(mx, my); g.rotate(an); g.lineWidth = 0.7; g.strokeStyle = 'rgba(20,20,22,.75)'; g.strokeText(r.n, 0, 0); g.fillStyle = '#f4f2ea'; g.fillText(r.n, 0, 0); g.restore();
-        }
-      }
       tiles.set(k, t);
       if (tiles.size > 90) tiles.delete(tiles.keys().next().value);
       return t;
@@ -230,7 +238,7 @@
     function buildMini() {
       const [a, b, c, d] = G.bounds, s = 220 / Math.max(c - a, d - b);
       const m2 = document.createElement('canvas'); m2.width = Math.ceil((c - a) * s) + 8; m2.height = Math.ceil((d - b) * s) + 8;
-      const g = m2.getContext('2d'); g.fillStyle = 'rgba(20,22,26,.72)'; g.fillRect(0, 0, m2.width, m2.height);
+      const g = m2.getContext('2d'); g.fillStyle = 'rgba(20,22,26,.9)'; g.fillRect(0, 0, m2.width, m2.height);
       g.translate(4, 4); g.scale(s, s); g.translate(-a, -b); g.lineCap = g.lineJoin = 'round';
       for (const p of G.parks) { g.beginPath(); p.p.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.fillStyle = '#3f5a33'; g.fill(); }
       for (const r of G.roads) { g.beginPath(); r.p.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.strokeStyle = r.k <= 3 ? '#e6c35a' : '#aeb3ba'; g.lineWidth = Math.max(1 / s, r.k <= 3 ? 2.2 / s : 1.1 / s); g.stroke(); }
@@ -283,7 +291,31 @@
       const off = r.o ? c.lane * Math.min(r.w / 4, 1.8) : Math.min(r.w / 4, 3.2);
       c.x = A[0] + dx * c.t - uy * off; c.y = A[1] + dy * c.t + ux * off; c.a = Math.atan2(uy, ux); c.segL = L; c.ux = ux; c.uy = uy;
     }
+    function planTurn(c) {
+      const r = G.roads[c.ri], j = c.i + c.dir, n = r.nd[j];
+      const opts = [];
+      for (const [ri, i] of G.links.get(n)) {
+        const r2 = G.roads[ri];
+        for (const d of [1, -1]) {
+          if (i + d < 0 || i + d >= r2.p.length) continue;
+          if (r2.o === 1 && d === -1) continue; if (r2.o === -1 && d === 1) continue;
+          if (ri === c.ri && i + d === c.i) continue;
+          const [ax, ay] = r2.p[i], [bx, by] = r2.p[i + d], ang = Math.atan2(by - ay, bx - ax);
+          const turn = angDiff(ang - c.a);
+          opts.push({ ri, i, d, turn, wgt: Math.abs(turn) < 0.4 ? 3 : Math.abs(turn) < 2.2 ? 1 : 0.15 });
+        }
+      }
+      if (!opts.length) return null;
+      let s2 = Math.random() * opts.reduce((a, o) => a + o.wgt, 0), o = opts[0];
+      for (const q of opts) { s2 -= q.wgt; if (s2 <= 0) { o = q; break; } }
+      return o;
+    }
     function nextSeg(c) {
+      const o = c.plan || planTurn(c); c.plan = null; c.sig = 0;
+      if (!o) return false;
+      c.ri = o.ri; c.i = o.i; c.dir = o.d; c.t = 0; const r2 = G.roads[o.ri]; if (!r2.o) c.lane = 1; return true;
+    }
+    function nextSegOld(c) {
       const r = G.roads[c.ri], j = c.i + c.dir, n = r.nd[j];
       const opts = [];
       for (const [ri, i] of G.links.get(n)) {
@@ -313,6 +345,9 @@
         const stopD = distEnd - (L.maxW / 2 + 4);
         if ((st === 'r' || (st === 'y' && stopD > 9)) && stopD > -1.5) want = Math.min(want, Math.sqrt(Math.max(0, 2 * 4 * (stopD - 0.5))));
       }
+      // guiño antes de doblar
+      if (distEnd < 30 && !c.plan && G.deg(endNode) >= 3) { c.plan = planTurn(c); c.sig = c.plan ? (c.plan.turn > 0.45 ? 1 : c.plan.turn < -0.45 ? -1 : 0) : 0; }
+      if (isRain()) want *= 0.82;
       // auto de adelante (y el tuyo)
       for (const o of [...cars, me]) {
         if (o === c) continue;
@@ -356,27 +391,46 @@
       const maxS = 0.62 / (1 + Math.abs(me.vf) / 8);
       const target = ((keys.left ? -1 : 0) + (keys.right ? 1 : 0)) * maxS;
       me.steer += (target - me.steer) * Math.min(1, dt * 7);
-      const nr = nearestRoad(me.x, me.y), off = !nr || nr.d > 1.2;
+      const wet = isRain() ? 0.68 : 1;
       let a = 0;
       if (thr) a += me.vf < -0.3 ? 9 : 4.6 * Math.max(0, 1 - me.vf / 36);
-      if (brk) a += me.vf > 0.3 ? -9.5 : -3 * (me.vf > -6 ? 1 : 0);
+      if (brk) a += me.vf > 0.3 ? -9.5 * wet : -3 * (me.vf > -6 ? 1 : 0);
       if (hb) a += me.vf > 0 ? -4 : 4;
       a -= 0.25 * Math.sign(me.vf) + 0.0009 * me.vf * Math.abs(me.vf) * 2;
-      if (off) { a -= Math.sign(me.vf) * 2.5; if (Math.abs(me.vf) > 9) me.vf *= 1 - dt * 1.2; }
       if (!thr && !brk && Math.abs(me.vf) < 0.25) me.vf = 0;
       me.vf += a * dt;
       // giro según volante y velocidad, con límite de agarre
       let omega = me.vf / 2.6 * Math.tan(me.steer);
-      const grip = hb ? 4.5 : 9.5;
+      const grip = (hb ? 4.5 : 9.5) * wet;
       if (Math.abs(omega * me.vf) > grip) { const ex = Math.abs(omega * me.vf) - grip; omega = Math.sign(omega) * grip / Math.max(0.1, Math.abs(me.vf)); me.vr -= Math.sign(omega * me.vf) * ex * dt * 0.6; }
       if (hb && Math.abs(me.vf) > 4) omega *= 1.35;
       me.a += omega * dt;
-      me.vr *= Math.exp(-(hb ? 1.2 : 7) * dt);
+      me.vr *= Math.exp(-(hb ? 1.2 : 7 * wet) * dt);
       const px = me.x, py = me.y;
       me.x += (Math.cos(me.a) * me.vf - Math.sin(me.a) * me.vr) * dt;
       me.y += (Math.sin(me.a) * me.vf + Math.cos(me.a) * me.vr) * dt;
       // marcas de frenada
       if ((Math.abs(me.vr) > 2 || (brk && me.vf > 8)) && skids.length < 900) for (const s of [-0.75, 0.75]) skids.push([me.x - Math.cos(me.a) * 1.4 - Math.sin(me.a) * s, me.y - Math.sin(me.a) * 1.4 + Math.cos(me.a) * s]);
+      // solo por la calle: el cordón frena el auto
+      // se revisan las 4 puntas del auto: ninguna puede pasar el cordón
+      let worst = 0, nx = 0, ny = 0;
+      const cA = Math.cos(me.a), sA = Math.sin(me.a);
+      for (const [fx, fy] of [[me.len / 2, me.wid / 2], [me.len / 2, -me.wid / 2], [-me.len / 2, me.wid / 2], [-me.len / 2, -me.wid / 2]]) {
+        const qx = me.x + cA * fx - sA * fy, qy = me.y + sA * fx + cA * fy, q = nearestRoad(qx, qy);
+        if (!q) { worst = 99; break; }
+        if (q.d > worst) { worst = q.d; const dd = Math.hypot(qx - q.px, qy - q.py) || 0.001; nx = (qx - q.px) / dd; ny = (qy - q.py) / dd; }
+      }
+      if (worst === 99) { me.x = px; me.y = py; me.vf *= -0.2; me.vr = 0; }
+      else if (worst > 0) {
+        me.x -= nx * (worst + 0.02); me.y -= ny * (worst + 0.02);
+        const ca2 = Math.cos(me.a), sa2 = Math.sin(me.a);
+        let vx = ca2 * me.vf - sa2 * me.vr, vy = sa2 * me.vf + ca2 * me.vr;
+        const vn = vx * nx + vy * ny;
+        if (vn > 0) { vx -= nx * vn * 1.3; vy -= ny * vn * 1.3; if (vn > 7) crash('¡Te subiste al cordón!'); }
+        me.vf = (vx * ca2 + vy * sa2) * 0.985; me.vr = -vx * sa2 + vy * ca2;
+      }
+      // guiños: se apagan solos después de doblar
+      if ((blink.l || blink.r) && Math.abs(angDiff(me.a - blink.a0)) > 1.1 && Math.abs(me.steer) < 0.08) { blink.l = blink.r = false; }
       // choques con casas
       const ca = Math.cos(me.a), sa = Math.sin(me.a), hl = me.len / 2 - 0.2, hw = me.wid / 2 - 0.1;
       for (const [fx, fy] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw]]) {
@@ -454,6 +508,10 @@
       }
       ctx.fillStyle = '#fff6c8'; ctx.fillRect(L / 2 - 0.25, -Wd / 2 + 0.2, 0.25, 0.45); ctx.fillRect(L / 2 - 0.25, Wd / 2 - 0.65, 0.25, 0.45);
       const brake = mine ? keys.down && me.vf > 0.5 : c.brake;
+      const on = (clock * 2.6) % 1 < 0.5;
+      const sigL = mine ? (blink.l || blink.haz) : (c.sig === -1 || c.haz), sigR = mine ? (blink.r || blink.haz) : (c.sig === 1 || c.haz);
+      if (on) { ctx.fillStyle = '#ffae00'; if (sigL) { ctx.fillRect(L / 2 - 0.5, -Wd / 2 - 0.05, 0.45, 0.3); ctx.fillRect(-L / 2 + 0.05, -Wd / 2 - 0.05, 0.45, 0.3); } if (sigR) { ctx.fillRect(L / 2 - 0.5, Wd / 2 - 0.25, 0.45, 0.3); ctx.fillRect(-L / 2 + 0.05, Wd / 2 - 0.25, 0.45, 0.3); }
+        ctx.fillStyle = 'rgba(255,174,0,.28)'; if (sigL) { ctx.beginPath(); ctx.arc(L / 2 - 0.3, -Wd / 2, 0.9, 0, TAU); ctx.arc(-L / 2 + 0.3, -Wd / 2, 0.9, 0, TAU); ctx.fill(); } if (sigR) { ctx.beginPath(); ctx.arc(L / 2 - 0.3, Wd / 2, 0.9, 0, TAU); ctx.arc(-L / 2 + 0.3, Wd / 2, 0.9, 0, TAU); ctx.fill(); } }
       ctx.fillStyle = brake ? '#ff2a2a' : '#7a1515'; ctx.fillRect(-L / 2, -Wd / 2 + 0.2, 0.3, 0.45); ctx.fillRect(-L / 2, Wd / 2 - 0.65, 0.3, 0.45);
       if (brake) { ctx.fillStyle = 'rgba(255,40,40,.25)'; ctx.beginPath(); ctx.arc(-L / 2, 0, 1.6, 0, TAU); ctx.fill(); }
       if (mine) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 0.18; ctx.beginPath(); ctx.roundRect(-L / 2, -Wd / 2, L, Wd, 0.7); ctx.stroke(); }
@@ -475,6 +533,61 @@
         }
       }
     }
+    const toScr = (x, y) => [W / 2 + (x - camX) * zoom, Hh / 2 + (y - camY) * zoom];
+    function drawSigns() {
+      ctx.save(); ctx.font = '700 11px system-ui, Segoe UI, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      for (const s2 of G.signs) {
+        const [sx, sy] = toScr(s2.x, s2.y); if (sx < -80 || sy < -40 || sx > W + 20 || sy > Hh + 20) continue;
+        const lines = s2.names.map(n => n.length > 22 ? n.slice(0, 21) + '…' : n), w = Math.max(...lines.map(t => ctx.measureText(t).width)) + 12, hh = lines.length * 15 + 5;
+        ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(sx - 1 + 2, sy - hh - 6 + 2, w, hh);
+        ctx.fillStyle = '#d9d9d9'; ctx.fillRect(sx - 1, sy - 6, 2, 6);
+        ctx.fillStyle = '#183a5c'; ctx.fillRect(sx - 1, sy - hh - 6, w, hh);
+        ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1; ctx.strokeRect(sx + 1.5, sy - hh - 3.5, w - 5, hh - 5);
+        ctx.fillStyle = '#fff'; lines.forEach((t, i) => ctx.fillText(t, sx + 5, sy - hh - 6 + 10 + i * 15));
+      }
+      ctx.restore();
+    }
+    function drawNight() {
+      if (!dark) dark = document.createElement('canvas');
+      if (dark.width !== cv.width || dark.height !== cv.height) { dark.width = cv.width; dark.height = cv.height; }
+      const g = dark.getContext('2d'), d = DPR;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over';
+      g.fillStyle = isRain() ? 'rgba(6,9,18,.78)' : 'rgba(8,11,24,.72)'; g.fillRect(0, 0, dark.width, dark.height);
+      g.setTransform(d, 0, 0, d, 0, 0); g.globalCompositeOperation = 'destination-out';
+      const glow = (x, y, r, a) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
+      const beam = (c, len, a) => {
+        const [x, y] = toScr(c.x + Math.cos(c.a) * c.len / 2, c.y + Math.sin(c.a) * c.len / 2), L = len * zoom;
+        const gr = g.createRadialGradient(x, y, 0, x, y, L); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gr; g.beginPath(); g.moveTo(x, y); g.arc(x, y, L, c.a - 0.42, c.a + 0.42); g.closePath(); g.fill();
+      };
+      for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x > -200 && y > -200 && x < W + 200 && y < Hh + 200) glow(x, y, 24 * zoom, 0.85); }
+      for (const c of cars) { const [x, y] = toScr(c.x, c.y); if (x > -300 && y > -300 && x < W + 300 && y < Hh + 300) beam(c, 22, 0.75); }
+      beam(me, headOn ? 46 : 34, 0.95);
+      { const [x, y] = toScr(me.x, me.y); glow(x, y, 7 * zoom, 0.5); }
+      for (const L of G.lights.values()) { const [x, y] = toScr(L.x, L.y); if (x > -100 && y > -100 && x < W + 100 && y < Hh + 100) glow(x, y, (L.maxW / 2 + 6) * zoom, 0.35); }
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(dark, 0, 0); ctx.restore();
+      // brillos que se suman: faroles, luces traseras y semáforos
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x < -40 || y < -40 || x > W + 40 || y > Hh + 40) continue; const gr = ctx.createRadialGradient(x, y, 0, x, y, 3 * zoom); gr.addColorStop(0, 'rgba(255,214,140,.55)'); gr.addColorStop(1, 'rgba(255,214,140,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, 3 * zoom, 0, TAU); ctx.fill(); }
+      for (const c of [...cars, me]) {
+        const bx = c.x - Math.cos(c.a) * c.len / 2, by = c.y - Math.sin(c.a) * c.len / 2, [x, y] = toScr(bx, by); if (x < -40 || y < -40 || x > W + 40 || y > Hh + 40) continue;
+        const br = c === me ? keys.down && me.vf > 0.5 : c.brake;
+        ctx.fillStyle = br ? 'rgba(255,30,30,.5)' : 'rgba(255,30,30,.22)'; ctx.beginPath(); ctx.arc(x, y, (br ? 2.4 : 1.4) * zoom, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+    function drawRain() {
+      ctx.save();
+      ctx.fillStyle = isNight() ? 'rgba(40,50,70,.12)' : 'rgba(70,80,95,.28)'; ctx.fillRect(0, 0, W, Hh);
+      if (drops.length < 260) for (let i = drops.length; i < 260; i++) drops.push([Math.random() * W, Math.random() * Hh, 0.6 + Math.random() * 0.6]);
+      ctx.strokeStyle = isNight() ? 'rgba(170,190,220,.35)' : 'rgba(220,230,245,.45)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (const dr of drops) { dr[0] -= 3 * dr[2]; dr[1] += 18 * dr[2]; if (dr[1] > Hh) { dr[1] = -10; dr[0] = Math.random() * (W + 80); } if (dr[0] < -10) dr[0] = W; ctx.moveTo(dr[0], dr[1]); ctx.lineTo(dr[0] + 2.5 * dr[2], dr[1] - 13 * dr[2]); }
+      ctx.stroke();
+      // salpicaduras en el piso
+      ctx.fillStyle = 'rgba(220,230,245,.35)';
+      for (let i = 0; i < 25; i++) { const x = Math.random() * W, y = Math.random() * Hh; ctx.fillRect(x, y, 3, 1); }
+      ctx.restore();
+    }
     function draw() {
       if (!G || !me) return;
       ctx.fillStyle = '#b9b3a6'; ctx.fillRect(0, 0, W, Hh);
@@ -489,6 +602,9 @@
       drawCar(me, true);
       drawLights();
       ctx.restore();
+      if (isNight()) drawNight();
+      if (isRain()) drawRain();
+      drawSigns();
       // flecha hacia la entrega
       if (job) {
         const dx = job.x - camX, dy = job.y - camY, sx = W / 2 + dx * zoom, sy = Hh / 2 + dy * zoom;
@@ -596,10 +712,15 @@
       if ((e.key === 'p' || e.key === 'P') && state === 'pause') { msg.hidden = true; state = 'run'; return true; }
       if (state !== 'run') return false;
       if (e.key === 'r' || e.key === 'R') { resetToRoad(); say('Volviste a la calle'); return true; }
+      if (e.key === 'q' || e.key === 'Q') { blink.l = !blink.l; blink.r = false; blink.a0 = me.a; return true; }
+      if (e.key === 'e' || e.key === 'E') { blink.r = !blink.r; blink.l = false; blink.a0 = me.a; return true; }
+      if (e.key === 'b' || e.key === 'B') { blink.haz = !blink.haz; say(blink.haz ? 'Balizas prendidas' : 'Balizas apagadas'); return true; }
+      if (e.key === 'l' || e.key === 'L') { headOn = !headOn; say(headOn ? 'Luces altas' : 'Luces bajas'); return true; }
       if (e.key === 'p' || e.key === 'P') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; keys = {}; return true; }
       const k = KEYS[e.key]; if (!k) return false; keys[k] = true; return true;
     };
     const tools = [
+      pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); }),
       seg([['entregas', 'Entregas'], ['libre', 'Paseo libre']], mode, (v) => { mode = v; const s = H.get(); s.mode = v; H.set(s); job = null; if (state === 'run') { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); } }),
       btn('Cambiar zona', () => menu()),
       btn('Volver a la calle', () => { if (state === 'run') resetToRoad(); })
@@ -612,7 +733,7 @@
     return {
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = SKIN[id] || me.c; },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · R volvés a la calle · P pausa. Respetá los semáforos: cruzar en rojo resta puntos.',
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · R volvés a la calle · P pausa. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };

@@ -1,7 +1,7 @@
 {
-  "version": "2.27.0",
-  "file": "versiones/base-app-2.27.0.zip",
-  "sha256": "5f16447fb5963f5cd5594d652e6ee87ca789a83988582583e7e801040b7aa0fd",
-  "size": 487558,
-  "notes": "Novedades 2.27\n- Juego nuevo en la Tienda: Manejá por tu barrio. Tus calles reales con semáforos, tránsito y entregas."
+  "version": "2.28.0",
+  "file": "versiones/base-app-2.28.0.zip",
+  "sha256": "5d300fa3d96fd5c6e10c099274d22bf1f2291f1589f93aa9a03fa450c7af3d93",
+  "size": 488500,
+  "notes": "Novedades 2.28\n- Joystick (Xbox) en la Sala de juegos.\n- Manejá por tu barrio: carteles en las esquinas, guiños, balizas, modo noche y lluvia, y no se sube a la vereda."
 }
