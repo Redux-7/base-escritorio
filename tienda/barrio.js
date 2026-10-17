@@ -29,6 +29,7 @@
     const S = 0.5;
     const roads = m.roads.map((r) => { const p = []; for (let i = 0; i < r.p.length; i += 2) p.push([r.p[i] * S, r.p[i + 1] * S]); return { n: r.n, k: r.k, w: r.k >= 7 ? r.w : r.w * 1.18 + 0.6, o: r.o, p, nd: r.nd && r.nd.length === p.length ? r.nd : null }; });
     // nodos del grafo: los puntos compartidos entre calles son esquinas
+    roads.forEach((r, ri) => { r.ri = ri; });
     const links = new Map();
     let fake = 1e7;
     for (let ri = 0; ri < roads.length; ri++) {
@@ -55,6 +56,7 @@
     G.rivers = m.rivers.map((a) => { const p = poly(a); return { p, bb: bbox(p) }; });
     G.rails = m.rails.map((a) => { const p = poly(a); return { p, bb: bbox(p) }; });
     G.cell = (x, y) => grid.get(key(Math.floor(x / C), Math.floor(y / C)));
+    G.addB = (b) => put(b.bb[0], b.bb[1], b.bb[2], b.bb[3], { b });
     // todo lo que cae en un rectángulo (para dibujar un mosaico sin recorrer el mapa entero)
     G.inRect = (x0, y0, x1, y1) => {
       const rs = new Set(), bs = new Set();
@@ -108,14 +110,16 @@
     G.signs = [];
     for (const n of corners) {
       const seen = new Map();
-      for (const [ri, i] of links.get(n)) { const r = roads[ri]; if (!r.n || r.k >= 7 || seen.has(r.n)) continue; const j = i < r.p.length - 1 ? i + 1 : i - 1; const [x0, y0] = r.p[i], [x1, y1] = r.p[j]; seen.set(r.n, { n: r.n, ang: Math.atan2(y1 - y0, x1 - x0), w: r.w }); }
+      for (const [ri, i] of links.get(n)) {
+        const r = roads[ri]; if (!r.n || r.k >= 7 || seen.has(r.n)) continue;
+        const j = i < r.p.length - 1 ? i + 1 : i - 1; const [x0, y0] = r.p[i], [x1, y1] = r.p[j], ang = Math.atan2(y1 - y0, x1 - x0);
+        // sentido de circulación (si es mano única): o=1 va hacia índices crecientes
+        const flow = !r.o ? null : ((r.o === 1) === (j > i) ? ang : ang + Math.PI);
+        seen.set(r.n, { n: r.n, ang, w: r.w, flow });
+      }
       if (seen.size < 1) continue;
-      const [x, y] = nodePos(n), list = [...seen.values()].slice(0, 2);
-      // cada cartel va sobre la vereda de SU calle, paralelo a ella y del lado de afuera del cruce
-      const A = list[0], Bq = list[1] || { ang: A.ang + Math.PI / 2, w: A.w };
-      const mk = (S, O, sg) => { const ux = Math.cos(S.ang) * sg, uy = Math.sin(S.ang) * sg, nx = -uy, ny = ux; const along = O.w / 2 + 2.2, side = S.w / 2 + 2.3; return { x: x + ux * along + nx * side, y: y + uy * along + ny * side, ux, uy, nx, ny, name: S.n, sw: S.w }; };
-      G.signs.push(mk(A, Bq, 1));
-      if (list[1]) G.signs.push(mk(Bq, A, -1));
+      const [x, y] = nodePos(n), list = [...seen.values()].slice(0, 2), cor = { used: [] };
+      list.forEach((S, k) => { const O = list[1 - k] || { w: S.w }; G.signs.push({ x0: x, y0: y, ang: S.ang, w: S.w, ow: O.w, name: S.n, flow: S.flow, cor }); });
     }
     // faroles en las esquinas (se ven de noche)
     G.lampsCorner = corners.map(n => { const [x, y] = nodePos(n); let mw = 0; for (const [ri] of links.get(n)) mw = Math.max(mw, roads[ri].w); return [x + mw / 2 + 1.5, y - mw / 2 - 1.5]; });
@@ -169,7 +173,7 @@
         const ux = (bx - ax) / L, uy = (by - ay) / L;
         for (let t = 9; t < L - 9; t += 13) for (const sd of [-1, 1]) {
           const q = hsh(ri * 977 + i, Math.round(t) * 3 + sd); if (q < 0.45) continue;
-          const off = r.w / 2 + 2.2;
+          const off = r.k >= 5 ? r.w / 2 + 1.05 : r.w / 2 + 1.6;
           G.trees.push([ax + ux * t - uy * off * sd, ay + uy * t + ux * off * sd, 2.2 + q * 1.8]);
         }
       }
@@ -204,7 +208,7 @@
     let wx = WX[H.get().wx] ? H.get().wx : 'dia';
     const isNight = () => wx === 'noche' || wx === 'noche_lluvia', isRain = () => wx === 'lluvia' || wx === 'noche_lluvia';
     let inBay = false, splash = [];
-    let drops = [], dark = null, blink = { l: false, r: false, haz: false, a0: 0 }, lights = 'off', fuelWarn = 0, filling = false, wrongT = 0, wrongKind = '';
+    let drops = [], dark = null, blink = { l: false, r: false, haz: false, a0: 0 }, lights = 'off', fuelWarn = 0, filling = false, repairing = false, smoke = [], wrongT = 0, wrongKind = '';
     const LIGHTS = { off: 'Luces apagadas', low: 'Luces bajas', high: 'Luces altas' };
     const autoLights = () => { if ((isRain() || isNight()) && lights === 'off') lights = 'low'; };
     let veh = VEH[H.get().veh] ? H.get().veh : 'auto', siren = false;
@@ -218,8 +222,8 @@
     function noisePattern() {
       if (noise) return noise;
       const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
-      g.fillStyle = '#b9b3a6'; g.fillRect(0, 0, 128, 128);
-      for (let i = 0; i < 900; i++) { const v = 150 + Math.random() * 60 | 0; g.fillStyle = `rgba(${v},${v - 6},${v - 16},.35)`; g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random() * 2, 1 + Math.random() * 2); }
+      g.fillStyle = '#7f8a63'; g.fillRect(0, 0, 128, 128);
+      for (let i = 0; i < 1400; i++) { const v = Math.random(); g.fillStyle = v < 0.45 ? `rgba(60,72,40,${0.15 + v * 0.3})` : v < 0.8 ? `rgba(150,160,110,${(v - 0.4) * 0.35})` : `rgba(130,115,85,${(v - 0.8) * 1.2})`; g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random() * 3, 1 + Math.random() * 3); }
       noise = c; return c;
     }
     let asph = null;
@@ -236,9 +240,70 @@
       for (let i = 0; i < n; i++) { const [x1, y1] = p[i], [x2, y2] = p[(i + 1) % n], cr = x1 * y2 - x2 * y1; area += cr; cx += (x1 + x2) * cr; cy += (y1 + y2) * cr; const L = Math.hypot(x2 - x1, y2 - y1); if (L > best) { best = L; ax = Math.atan2(y2 - y1, x2 - x1); } }
       area /= 2; if (Math.abs(area) < 1e-6) { cx = (b.bb[0] + b.bb[2]) / 2; cy = (b.bb[1] + b.bb[3]) / 2; } else { cx /= 6 * area; cy /= 6 * area; }
       b.area = Math.abs(area); b.cx = cx; b.cy = cy; b.ax = ax;
+      { const c0 = Math.cos(ax), s0 = Math.sin(ax); let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9; for (const [x, y] of p) { const u = (x - cx) * c0 + (y - cy) * s0, v = -(x - cx) * s0 + (y - cy) * c0; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }
+        const A = (u1 - u0) / 2, B = (v1 - v0) / 2; if (b.area > 0.86 * 4 * A * B && A > 1.5 && B > 1.5) { const mu = (u0 + u1) / 2, mv = (v0 + v1) / 2; b.rect = { cx: cx + mu * c0 - mv * s0, cy: cy + mu * s0 + mv * c0, A, B }; } }
       const q = b.c;
-      b.kind = b.area > 260 ? (q < 0.25 ? 'chapa' : 'losa') : q < 0.5 ? 'teja' : q < 0.62 ? 'chapa' : 'losa';
+      b.kind = b.gen ? (q < 0.62 ? 'teja' : q < 0.7 ? 'chapa' : 'losa') : b.area > 260 ? (q < 0.25 ? 'chapa' : 'losa') : q < 0.5 ? 'teja' : q < 0.62 ? 'chapa' : 'losa';
       b.h = b.area > 600 ? 6 + q * 10 : b.area > 200 ? 3 + q * 4 : 1.5 + q * 2;
+    }
+    // árbol visto desde arriba: copa en grupitos, con luz de arriba a la izquierda
+    function drawTree(g, x, y, rr, q) {
+      g.fillStyle = 'rgba(20,25,15,.28)'; g.beginPath(); g.ellipse(x + rr * 0.45, y + rr * 0.5, rr * 1.02, rr * 0.92, 0, 0, TAU); g.fill();
+      const hue = 82 + q * 22, sat = 20 + q * 14, lit = 25 + q * 8;
+      for (let k = 0; k < 7; k++) {
+        const an = k * 1.05 + q * 7, d = k === 6 ? 0 : rr * 0.46 * (0.6 + ((k * 0.37 + q) % 1) * 0.5), cr = rr * (k === 6 ? 0.55 : 0.4 + ((k * 0.53 + q) % 1) * 0.2);
+        const cx = x + Math.cos(an) * d, cy = y + Math.sin(an) * d, gr = g.createRadialGradient(cx - cr * 0.35, cy - cr * 0.4, cr * 0.1, cx, cy, cr * 1.05);
+        gr.addColorStop(0, `hsl(${hue} ${sat}% ${lit + 12}%)`); gr.addColorStop(0.7, `hsl(${hue} ${sat}% ${lit}%)`); gr.addColorStop(1, `hsl(${hue} ${sat}% ${lit - 7}%)`);
+        g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, cr, 0, TAU); g.fill();
+      }
+    }
+    // techo a cuatro aguas: cada faldón con su sombra según de dónde viene la luz
+    function hipRoof(bg, b, base) {
+      let { cx, cy, A, B } = b.rect, rot = b.ax; if (B > A) { [A, B] = [B, A]; rot += Math.PI / 2; }
+      bg.save(); bg.translate(cx, cy); bg.rotate(rot);
+      const cr = Math.cos(rot), sr = Math.sin(rot), LX = -0.62, LY = -0.78, r0 = Math.max(0, A - B);
+      const F = [[[[-A, -B], [A, -B], [r0, 0], [-r0, 0]], 0, -1], [[[-A, B], [A, B], [r0, 0], [-r0, 0]], 0, 1], [[[-A, -B], [-A, B], [-r0, 0]], -1, 0], [[[A, -B], [A, B], [r0, 0]], 1, 0]];
+      for (const [pts, nx, ny] of F) {
+        const wx = nx * cr - ny * sr, wy = nx * sr + ny * cr, k = 0.24 * (wx * LX + wy * LY);
+        bg.beginPath(); pts.forEach(([x, y], i) => i ? bg.lineTo(x, y) : bg.moveTo(x, y)); bg.closePath(); bg.fillStyle = shade(base, k); bg.fill();
+        bg.save(); bg.clip(); bg.strokeStyle = 'rgba(40,20,10,.13)'; bg.lineWidth = 0.09; bg.beginPath();
+        if (ny) for (let v = -B; v < B; v += 0.45) { bg.moveTo(-A, v); bg.lineTo(A, v); } else for (let u = -A; u < A; u += 0.45) { bg.moveTo(u, -B); bg.lineTo(u, B); }
+        bg.stroke(); bg.restore();
+      }
+      bg.strokeStyle = 'rgba(255,238,220,.32)'; bg.lineWidth = 0.16; bg.beginPath(); bg.moveTo(-r0, 0); bg.lineTo(r0, 0);
+      for (const [x, y] of [[-A, -B], [-A, B]]) { bg.moveTo(x, y); bg.lineTo(-r0, 0); } for (const [x, y] of [[A, -B], [A, B]]) { bg.moveTo(x, y); bg.lineTo(r0, 0); } bg.stroke();
+      bg.restore();
+    }
+    // en las cuadras donde el mapa no trae casas, se arman lotes con casas (siempre iguales para el mismo lugar)
+    function inGreen(x, y) { for (const a of G.parks) if (x >= a.bb[0] && x <= a.bb[2] && y >= a.bb[1] && y <= a.bb[3] && pointInPoly(x, y, a.p)) return true; for (const a of G.water) if (x >= a.bb[0] && x <= a.bb[2] && y >= a.bb[1] && y <= a.bb[3] && pointInPoly(x, y, a.p)) return true; return false; }
+    function nearRail(x, y) { for (const a of G.rails) { if (x < a.bb[0] - 8 || x > a.bb[2] + 8 || y < a.bb[1] - 8 || y > a.bb[3] + 8) continue; for (let i = 0; i < a.p.length - 1; i++) { const [ax, ay] = a.p[i], [bx, by] = a.p[i + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); if (Math.hypot(x - ax - dx * t, y - ay - dy * t) < 7) return true; } } return false; }
+    function genHouses(x0, y0, x1, y1) {
+      if (!G.genDone) G.genDone = new Set();
+      const free = (x, y) => { const q = nearestRoad(x, y); return !!q && q.d >= 3.15 && !inBuilding(x, y) && !lotAt(x, y) && !inGreen(x, y); };
+      for (const r of G.inRect(x0, y0, x1, y1).roads) {
+        if (r.k < 2 || r.k > 6) continue;
+        for (let i = 0; i < r.p.length - 1; i++) {
+          const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 16) continue;
+          const ux = (bx - ax) / L, uy = (by - ay) / L;
+          for (let s0 = 7; s0 < L - 7; s0 += 10) {
+            const cx = ax + ux * s0, cy = ay + uy * s0; if (cx < x0 || cx > x1 || cy < y0 || cy > y1) continue;
+            for (const side of [-1, 1]) {
+              const kk = r.ri + ',' + i + ',' + s0 + ',' + side; if (G.genDone.has(kk)) continue; G.genDone.add(kk);
+              const H2 = (n) => hsh(r.ri * 7919 + i * 31 + side * 3 + n, s0 * 13 + n * 101), q = H2(0);
+              if (q < 0.07) continue;
+              const nx = -uy * side, ny = ux * side, wid = 7.2 + H2(1) * 2.3, q3 = H2(2), set = q3 < 0.5 ? 0.3 + q3 * 2 : 1.5 + q3 * 3.5, dep = 9 + H2(3) * 9;
+              const f0 = r.w / 2 + 3.3 + set, f1 = f0 + dep, P = (a, v) => [cx + ux * a + nx * v, cy + uy * a + ny * v];
+              const pts = [P(-wid / 2, f0), P(wid / 2, f0), P(wid / 2, f1), P(-wid / 2, f1)];
+              if (![...pts, P(0, (f0 + f1) / 2), P(0, f0), P(0, f1)].every(([x, y]) => free(x, y)) || nearRail(cx + nx * f1, cy + ny * f1)) continue;
+              const bb = [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))];
+              const b = { p: pts, bb, c: H2(4), gen: true, yard: { fences: [[P(-5, r.w / 2 + 3.3), P(-5, f1 + 7)], [P(5, r.w / 2 + 3.3), P(5, f1 + 7)]], front: [P(-5, r.w / 2 + 3.3), P(5, r.w / 2 + 3.3)] } };
+              if (H2(5) < 0.5 && set > 1) b.drive = [P(wid / 2 - 2.9, r.w / 2 - 0.1), P(wid / 2 - 0.3, r.w / 2 - 0.1), P(wid / 2 - 0.3, f0), P(wid / 2 - 2.9, f0)];
+              if (H2(6) > 0.86) { const pp = [P(-1.6, f1 + 1.6), P(1.6, f1 + 1.6), P(1.6, f1 + 6.4), P(-1.6, f1 + 6.4)]; if (pp.every(([x, y]) => free(x, y))) b.yard.pool = pp; }
+              G.addB(b);
+            }
+          }
+        }
+      }
     }
     function tile(tx, ty) {
       const k = tx + ',' + ty;
@@ -252,18 +317,18 @@
       // manzanas: veredas y patios
       const pat = g.createPattern(noisePattern(), 'repeat'); pat.setTransform && pat.setTransform(new DOMMatrix().scale(0.18));
       g.fillStyle = pat; g.fillRect(x0, y0, TILE, TILE);
+      genHouses(x0 - 40, y0 - 40, x1 + 40, y1 + 40);
       const inside = G.inRect(x0 - pad, y0 - pad, x1 + pad, y1 + pad);
       const path = (p, close) => { g.beginPath(); p.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); if (close) g.closePath(); };
       for (const a of G.parks) if (inT(a.bb)) {
-        path(a.p, true); g.fillStyle = '#6f8f4e'; g.fill();
+        path(a.p, true); g.fillStyle = '#6c7f4c'; g.fill();
         // pasto cortado a franjas y árboles adentro
         g.save(); path(a.p, true); g.clip(); g.fillStyle = 'rgba(255,255,255,.05)';
         for (let yy = Math.floor(a.bb[1] / 6) * 6; yy < a.bb[3]; yy += 12) g.fillRect(a.bb[0], yy, a.bb[2] - a.bb[0], 6);
         for (let xx = Math.floor(a.bb[0] / 9) * 9; xx < a.bb[2]; xx += 9) for (let yy = Math.floor(a.bb[1] / 9) * 9; yy < a.bb[3]; yy += 9) {
           const q = hsh(xx, yy); if (q > 0.35 || xx < x0 - 6 || xx > x1 + 6 || yy < y0 - 6 || yy > y1 + 6) continue;
           const tx2 = xx + q * 8, ty2 = yy + (1 - q) * 8, rr = 2.2 + q * 4;
-          g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.arc(tx2 + 1.2, ty2 + 1.3, rr, 0, TAU); g.fill();
-          g.fillStyle = q < 0.17 ? '#3f5f2c' : '#4d6d35'; g.beginPath(); for (let kq = 0; kq < 5; kq++) { const an = kq * 1.26 + q * 9, d = rr * 0.4; g.moveTo(tx2 + Math.cos(an) * d + rr * 0.6, ty2 + Math.sin(an) * d); g.arc(tx2 + Math.cos(an) * d, ty2 + Math.sin(an) * d, rr * 0.6, 0, TAU); } g.fill();
+          drawTree(g, tx2, ty2, rr, q * 2.7 % 1);
         }
         g.restore();
       }
@@ -278,8 +343,14 @@
       const near = inside.roads.sort((a, b) => a.w - b.w);
       g.lineJoin = g.lineCap = 'round';
       // veredas de baldosa clara, cordón y asfalto
-      for (const r of near) { if (r.k >= 7) continue; path(r.p); g.strokeStyle = '#cbc4b6'; g.lineWidth = r.w + 6.2; g.stroke(); }
-      for (const r of near) { if (r.k >= 7) continue; path(r.p); g.strokeStyle = 'rgba(0,0,0,.07)'; g.lineWidth = r.w + 6.2; g.setLineDash([0.08, 1.5]); g.lineCap = 'butt'; g.stroke(); g.setLineDash([]); g.lineCap = 'round'; }
+      for (const r of near) { if (r.k >= 7) continue; path(r.p); g.strokeStyle = '#c3c0b8'; g.lineWidth = r.w + 6.2; g.stroke(); }
+      // juntas de las baldosas
+      for (const r of near) { if (r.k >= 7) continue; path(r.p); g.strokeStyle = 'rgba(70,65,55,.13)'; g.lineWidth = r.w + 6.2; g.setLineDash([0.07, 1.1]); g.lineCap = 'butt'; g.stroke(); g.setLineDash([]); g.lineCap = 'round';
+        for (const off of [-(r.w / 2 + 2.1), r.w / 2 + 2.1]) { offPath(g, r.p, off); g.strokeStyle = 'rgba(70,65,55,.1)'; g.lineWidth = 0.06; g.stroke(); } }
+      // en las calles de barrio, cantero de pasto entre la vereda y el cordón
+      for (const r of near) { if (r.k < 5 || r.k >= 7) continue; for (const off of [-(r.w / 2 + 1.05), r.w / 2 + 1.05]) { offPath(g, r.p, off); g.strokeStyle = '#71824f'; g.lineWidth = 1.35; g.lineCap = 'butt'; g.stroke(); offPath(g, r.p, off); g.strokeStyle = 'rgba(40,55,25,.25)'; g.setLineDash([0.3, 0.5]); g.lineWidth = 1.1; g.stroke(); g.setLineDash([]); } g.lineCap = 'round'; }
+      // entradas de autos de las casas (cortan el cantero)
+      for (const b of inside.buildings) if (b.drive) { g.beginPath(); b.drive.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fillStyle = '#bab7af'; g.fill(); g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 0.08; g.stroke(); }
       for (const r of near) { path(r.p); g.strokeStyle = r.k === 8 ? '#a9a296' : '#e4dfd5'; g.lineWidth = r.w + 0.9; g.stroke(); }
       for (const r of near) { path(r.p); g.strokeStyle = r.k === 8 ? '#bdb5a6' : r.k <= 3 ? '#43464c' : '#4b4e54'; g.lineWidth = r.w; g.stroke(); }
       { const ap = g.createPattern(asphaltPattern(), 'repeat'); ap.setTransform && ap.setTransform(new DOMMatrix().scale(0.12)); for (const r of near) { if (r.k === 8) continue; path(r.p); g.strokeStyle = ap; g.lineWidth = r.w; g.stroke(); } }
@@ -375,31 +446,27 @@
         g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(lx - 5.2 + 0.4, ly - 1.6 + 0.4, 10.4, 3.2);
         g.fillStyle = '#1f6fd6'; g.fillRect(lx - 5.2, ly - 1.6, 10.4, 3.2); g.fillStyle = '#fff'; g.font = '800 1.7px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⛽ NAFTA', lx, ly + 0.1);
       }
-      // árboles de vereda
-      for (const [x, y, rr] of G.trees) {
-        if (x < x0 - 6 || x > x1 + 6 || y < y0 - 6 || y > y1 + 6) continue;
-        if (lotAt(x, y)) continue;
-        const q = hsh(x | 0, y | 0), base = q < 0.5 ? '#4b6a33' : '#577739';
-        g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.arc(x + 1.1, y + 1.2, rr * 1.05, 0, TAU); g.fill();
-        g.fillStyle = base; g.beginPath();
-        for (let k = 0; k < 5; k++) { const an = k * 1.26 + q * 6, d = rr * 0.42; g.moveTo(x + Math.cos(an) * d + rr * 0.62, y + Math.sin(an) * d); g.arc(x + Math.cos(an) * d, y + Math.sin(an) * d, rr * 0.62, 0, TAU); }
-        g.fill();
-        g.fillStyle = 'rgba(160,200,110,.22)'; g.beginPath(); g.arc(x - rr * 0.28, y - rr * 0.3, rr * 0.45, 0, TAU); g.fill();
-      }
       // casas y edificios: se dibujan aparte y después se borra lo que pisa la calle o la vereda
       if (!bcv) { bcv = document.createElement('canvas'); bcv.width = bcv.height = TILE * RES; }
       const bg = bcv.getContext('2d'); bg.setTransform(1, 0, 0, 1, 0, 0); bg.clearRect(0, 0, bcv.width, bcv.height);
       bg.setTransform(RES, 0, 0, RES, -x0 * RES, -y0 * RES); bg.lineJoin = 'round';
       const bpath = (p) => { bg.beginPath(); p.forEach(([x, y], i) => i ? bg.lineTo(x, y) : bg.moveTo(x, y)); bg.closePath(); };
-      const TILES = ['#b0603c', '#a35a3a', '#c06a45', '#9c4f33', '#b8714f'];
+      const TILES = ['#8f5a46', '#7f5444', '#946651', '#7a5d52', '#865a48', '#6f6560'];
       const blds = inside.buildings.filter(b => !G.stations.some(st => b.bb[2] > st.x - 19 && b.bb[0] < st.x + 19 && b.bb[3] > st.y - 19 && b.bb[1] < st.y + 19 && [[b.bb[0], b.bb[1]], [b.bb[2], b.bb[3]], [b.bb[0], b.bb[3]], [b.bb[2], b.bb[1]], [(b.bb[0] + b.bb[2]) / 2, (b.bb[1] + b.bb[3]) / 2]].some(([qx, qy]) => { const dx = qx - st.ex, dy = qy - st.ey, u = dx * st.ux + dy * st.uy, v = dx * st.vx + dy * st.vy; return u > -17 && u < 17 && v > -1 && v < 18; })));
       for (const b of blds) { if (!b.kind) bInfo(b); }
+      // patios: medianeras, frentes con reja y alguna pileta
+      for (const b of blds) if (b.yard) {
+        bg.strokeStyle = 'rgba(90,85,78,.55)'; bg.lineWidth = 0.18; bg.beginPath(); for (const [[ax, ay], [bx, by]] of b.yard.fences) { bg.moveTo(ax, ay); bg.lineTo(bx, by); } bg.stroke();
+        const [[fx0, fy0], [fx1, fy1]] = b.yard.front; bg.strokeStyle = 'rgba(60,58,55,.7)'; bg.lineWidth = 0.28; bg.beginPath(); bg.moveTo(fx0, fy0); bg.lineTo(fx1, fy1); bg.stroke();
+        if (b.yard.pool) { bpath(b.yard.pool); bg.fillStyle = '#d9d6cc'; bg.fill(); bg.save(); bg.translate(0, 0); const pp = b.yard.pool, cxp = (pp[0][0] + pp[2][0]) / 2, cyp = (pp[0][1] + pp[2][1]) / 2; bg.beginPath(); pp.forEach(([x, y], i) => { const X = cxp + (x - cxp) * 0.8, Y = cyp + (y - cyp) * 0.84; i ? bg.lineTo(X, Y) : bg.moveTo(X, Y); }); bg.closePath(); const gp = bg.createLinearGradient(pp[0][0], pp[0][1], pp[2][0], pp[2][1]); gp.addColorStop(0, '#5fa3b8'); gp.addColorStop(1, '#3f7f99'); bg.fillStyle = gp; bg.fill(); bg.restore(); }
+      }
       // sombras (más largas cuanto más alto)
       for (const b of blds) { const o = 0.6 + b.h * 0.32; bg.save(); bg.translate(o, o * 0.9); bpath(b.p); bg.fillStyle = 'rgba(0,0,0,.2)'; bg.fill(); bg.restore(); bg.save(); bg.translate(o * 0.45, o * 0.4); bpath(b.p); bg.fillStyle = 'rgba(0,0,0,.14)'; bg.fill(); bg.restore(); }
       for (const b of blds) {
         const [bx0, by0, bx1, by1] = b.bb, R = Math.hypot(bx1 - bx0, by1 - by0) / 2 + 1;
         bg.save(); bpath(b.p); bg.clip();
         bg.translate(b.cx, b.cy); bg.rotate(b.ax);
+        if (b.kind === 'teja' && b.rect) { bg.restore(); hipRoof(bg, b, TILES[(b.c * 97 | 0) % TILES.length]); bpath(b.p); bg.strokeStyle = 'rgba(0,0,0,.3)'; bg.lineWidth = 0.22; bg.stroke(); continue; }
         if (b.kind === 'teja') {
           bg.fillStyle = TILES[(b.c * 97 | 0) % TILES.length]; bg.fillRect(-R, -R, 2 * R, 2 * R);
           bg.strokeStyle = 'rgba(60,20,10,.22)'; bg.lineWidth = 0.12; bg.beginPath(); for (let v = -R; v < R; v += 0.55) { bg.moveTo(-R, v); bg.lineTo(R, v); } bg.stroke();
@@ -408,12 +475,12 @@
           bg.strokeStyle = 'rgba(255,240,220,.4)'; bg.lineWidth = 0.3; bg.beginPath(); bg.moveTo(-R, 0); bg.lineTo(R, 0); bg.stroke();
           if (b.c > 0.75) { bg.fillStyle = '#6d6a66'; bg.fillRect(b.c * 4 - 3, -1.6, 0.9, 0.9); }
         } else if (b.kind === 'chapa') {
-          bg.fillStyle = b.c < 0.5 ? '#8e99a2' : '#9aa39c'; bg.fillRect(-R, -R, 2 * R, 2 * R);
+          bg.fillStyle = b.c < 0.5 ? '#8a9096' : '#959a92'; bg.fillRect(-R, -R, 2 * R, 2 * R);
           bg.strokeStyle = 'rgba(255,255,255,.16)'; bg.lineWidth = 0.1; bg.beginPath(); for (let u = -R; u < R; u += 0.32) { bg.moveTo(u, -R); bg.lineTo(u, R); } bg.stroke();
           bg.fillStyle = 'rgba(0,0,0,.12)'; bg.fillRect(-R, 0, 2 * R, R);
         } else {
           // losa plana: membrana clara, pretil, tanque de agua y aire acondicionado
-          bg.fillStyle = b.c < 0.3 ? '#c9c6bd' : b.c < 0.6 ? '#b7b9b6' : '#d6d0c2'; bg.fillRect(-R, -R, 2 * R, 2 * R);
+          bg.fillStyle = b.c < 0.3 ? '#b8b5ad' : b.c < 0.6 ? '#a9aaa6' : '#c3beb3'; bg.fillRect(-R, -R, 2 * R, 2 * R);
           bg.fillStyle = 'rgba(0,0,0,.05)'; for (let u = -R; u < R; u += 2) bg.fillRect(u, -R, 1, 2 * R);
           bg.rotate(-b.ax); bg.translate(-b.cx, -b.cy);
           bpath(b.p); bg.strokeStyle = 'rgba(255,255,255,.55)'; bg.lineWidth = 0.9; bg.stroke(); bpath(b.p); bg.strokeStyle = 'rgba(0,0,0,.18)'; bg.lineWidth = 1.6; bg.setLineDash([]); bg.globalCompositeOperation = 'source-atop'; bg.stroke(); bg.globalCompositeOperation = 'source-over';
@@ -433,6 +500,14 @@
       for (const r of near) { bg.beginPath(); r.p.forEach(([x, y], i) => i ? bg.lineTo(x, y) : bg.moveTo(x, y)); bg.strokeStyle = '#000'; bg.lineWidth = r.k >= 7 ? r.w + 1 : r.w + 6.2; bg.stroke(); }
       bg.globalCompositeOperation = 'source-over';
       g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(bcv, 0, 0); g.restore();
+      // árboles de vereda
+      for (const [x, y, rr] of G.trees) {
+        if (x < x0 - 6 || x > x1 + 6 || y < y0 - 6 || y > y1 + 6) continue;
+        if (lotAt(x, y)) continue;
+        const q = hsh(x | 0, y | 0); drawTree(g, x, y, rr, q);
+      }
+      // tono general más sobrio (menos saturado)
+      g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'saturation'; g.fillStyle = 'rgba(128,128,128,.22)'; g.fillRect(0, 0, t.width, t.height); g.restore();
       tiles.set(k, t);
       if (tiles.size > 90) tiles.delete(tiles.keys().next().value);
       return t;
@@ -499,9 +574,22 @@
       }
     }
     function segOf(c) { const r = G.roads[c.ri], A = r.p[c.i], B = r.p[c.i + c.dir]; return { r, A, B }; }
+    const laneOff = (r, lane) => r.o ? lane * Math.min(r.w / 4, 1.8) : Math.min(r.w / 4, 3.2);
+    // al doblar, el carril de entrada y el de salida se cruzan en un punto P: el auto deja el tramo viejo un poco antes
+    // de la esquina y entra al nuevo un poco después (así no vuelve para atrás haciendo un rulo)
+    function turnCut(c, o) {
+      const r = G.roads[c.ri], A = r.p[c.i], B = r.p[c.i + c.dir], r2 = G.roads[o.ri], C2 = r2.p[o.i], D = r2.p[o.i + o.d];
+      let u1x = B[0] - A[0], u1y = B[1] - A[1], l1 = Math.hypot(u1x, u1y) || 1; u1x /= l1; u1y /= l1;
+      let u2x = D[0] - C2[0], u2y = D[1] - C2[1], l2 = Math.hypot(u2x, u2y) || 1; u2x /= l2; u2y /= l2;
+      const lane2 = r2.o ? c.lane : 1, o1 = laneOff(r, c.lane), o2 = laneOff(r2, lane2);
+      const n1x = -u1y * o1, n1y = u1x * o1, n2x = -u2y * o2, n2y = u2x * o2;
+      const det = -u1x * u2y + u2x * u1y; if (Math.abs(det) < 0.25) return { end: 0, start: 0 };
+      const bx = n2x - n1x, by = n2y - n1y, s1 = (-bx * u2y + u2x * by) / det, s2 = (u1x * by - u1y * bx) / det;
+      return { end: Math.min(Math.max(0, -s1), l1 * 0.45, 9), start: Math.min(Math.max(0, s2), l2 * 0.45, 9) };
+    }
     function placeCar(c) {
       const { r, A, B } = segOf(c), dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
-      const off = r.o ? c.lane * Math.min(r.w / 4, 1.8) : Math.min(r.w / 4, 3.2);
+      const off = laneOff(r, c.lane);
       c.tx = A[0] + dx * c.t - uy * off; c.ty = A[1] + dy * c.t + ux * off; c.ta = Math.atan2(uy, ux); c.segL = L; c.ux = ux; c.uy = uy;
       if (c.x == null || c.snap) { c.x = c.tx; c.y = c.ty; c.a = c.ta; c.snap = false; }
     }
@@ -525,7 +613,7 @@
       return o;
     }
     function nextSeg(c) {
-      const o = c.plan || planTurn(c); c.plan = null; c.sig = 0;
+      const o = c.plan || planTurn(c); c.plan = null; c.sig = 0; c.cut = null;
       if (!o) return false;
       c.ri = o.ri; c.i = o.i; c.dir = o.d; c.t = 0; const r2 = G.roads[o.ri]; if (!r2.o) c.lane = 1; return true;
     }
@@ -560,7 +648,7 @@
         if ((st === 'r' || (st === 'y' && stopD > 9)) && stopD > -1.5) want = Math.min(want, Math.sqrt(Math.max(0, 2 * 4 * (stopD - 0.5))));
       }
       // guiño antes de doblar
-      if (distEnd < 30 && !c.plan && G.deg(endNode) >= 3) { c.plan = planTurn(c); c.sig = c.plan ? (c.plan.turn > 0.45 ? 1 : c.plan.turn < -0.45 ? -1 : 0) : 0; }
+      if (distEnd < 30 && !c.plan) { c.plan = planTurn(c); c.cut = c.plan ? turnCut(c, c.plan) : null; c.sig = c.plan && G.deg(endNode) >= 3 ? (c.plan.turn > 0.45 ? 1 : c.plan.turn < -0.45 ? -1 : 0) : 0; }
       if (isRain()) want *= 0.82;
       // auto de adelante (y el tuyo)
       for (const o of [...cars, me]) {
@@ -571,17 +659,19 @@
       // doblar más despacio (y bastante más si el giro es cerrado)
       if (distEnd < 18) want = Math.min(want, Math.max(5, want * 0.7));
       if (c.plan && distEnd < 20 && Math.abs(c.plan.turn) > 0.5) want = Math.min(want, 3.6 + (distEnd / 20) * 3);
+      if (c.hazT > 0) { c.hazT -= dt; want = 0; if (c.hazT <= 0) c.haz = false; }
       const acc = want > c.v ? 2.6 : -6;
       c.brake = want < c.v - 0.3;
       c.v = Math.max(0, c.v + Math.max(-6 * dt, Math.min(acc * dt, want - c.v)));
       c.stuck = c.v < 0.2 ? c.stuck + dt : 0;
       let move = c.v * dt;
       while (move > 0) {
-        const rem = (1 - c.t) * c.segL;
+        const rem = (1 - c.t) * c.segL - (c.cut ? c.cut.end : 0);
         if (move < rem) { c.t += move / c.segL; break; }
-        move -= rem;
+        move -= Math.max(0, rem);
+        const st0 = c.cut ? c.cut.start : 0;
         if (!nextSeg(c)) { c.dead = true; return; }
-        placeCar(c);
+        c.cut = null; placeCar(c); c.t = Math.min(0.45, st0 / c.segL);
       }
       placeCar(c);
       // suavizado: el auto "corta" la esquina en curva en vez de girar de golpe
@@ -599,7 +689,7 @@
       G.roads.forEach((r, ri) => { if (r.k > 6) return; r.p.forEach(([x, y], i) => { const d = x * x + y * y; if (d < bd && i < r.p.length - 1) { bd = d; best = [ri, i]; } }); });
       const r = G.roads[best[0]], A = r.p[best[1]], B = r.p[best[1] + 1], a = Math.atan2(B[1] - A[1], B[0] - A[0]);
       const off = r.o ? 0 : Math.min(r.w / 4, 3.2);
-      me = { fuel: 1, x: (A[0] + B[0]) / 2 - Math.sin(a) * off, y: (A[1] + B[1]) / 2 + Math.cos(a) * off, a, vf: 0, vr: 0, steer: 0, len: VEH[veh].len, wid: VEH[veh].wid, type: VEH[veh].t, V: VEH[veh], c: SKIN[H.get().skin] || '#d3202a', inLight: null };
+      me = { fuel: 1, x: (A[0] + B[0]) / 2 - Math.sin(a) * off, y: (A[1] + B[1]) / 2 + Math.cos(a) * off, a, vf: 0, vr: 0, steer: 0, len: VEH[veh].len, wid: VEH[veh].wid, type: VEH[veh].t, V: VEH[veh], c: SKIN[H.get().skin] || '#d3202a', inLight: null, dmg: 0, hits: [] };
       camX = me.x; camY = me.y;
     }
     function resetToRoad() {
@@ -610,20 +700,21 @@
     function carStep(dt) {
       const thr = keys.up ? 1 : 0, brk = keys.down ? 1 : 0, hb = keys.hb;
       const V = me.V, maxS = V.steer / (1 + Math.abs(me.vf) / 8);
-      const target = ((keys.left ? -1 : 0) + (keys.right ? 1 : 0)) * maxS;
+      const target = ((keys.left ? -1 : 0) + (keys.right ? 1 : 0)) * maxS + ((me.dmg || 0) > 0.45 && Math.abs(me.vf) > 3 ? (me.dmg - 0.45) * 0.06 : 0);
       me.steer += (target - me.steer) * Math.min(1, dt * 7);
       const wet = isRain() ? 0.68 : 1;
       let a = 0;
       const empty = me.fuel <= 0;
-      if (thr && !empty) a += me.vf < -0.3 ? 9 : V.acc * Math.max(0, 1 - me.vf / V.vmax);
+      const vmx = V.vmax * (1 - (me.dmg || 0) * 0.4);
+      if (thr && !empty) a += me.vf < -0.3 ? 9 : V.acc * (1 - (me.dmg || 0) * 0.3) * Math.max(0, 1 - me.vf / vmx);
       me.fuel = Math.max(0, me.fuel - (Math.abs(me.vf) * dt * (thr ? 1.25 : 0.7) + dt * 0.4) / (V.tank || 7000));
       if (empty && fuelWarn <= 0) { say('⛽ ¡Te quedaste sin nafta! R te lleva a la estación más cercana', true); fuelWarn = 6; }
       else if (me.fuel < 0.15 && fuelWarn <= 0) { say('⛽ Te queda poca nafta: buscá una estación (en el radar)', true); fuelWarn = 20; }
       fuelWarn -= dt;
       // cargar nafta: frenado al lado de una estación
-      filling = false;
+      filling = false; repairing = false;
       inBay = false;
-      { const L = lotAt(me.x, me.y); if (L) for (const b of L.st.bays) if (L.u > b.u0 + 0.6 && L.u < b.u1 - 0.6 && L.v > b.v0 + 0.2 && L.v < b.v1 - 0.2) { inBay = true; if (Math.abs(me.vf) < 0.5 && me.fuel < 1) { me.fuel = Math.min(1, me.fuel + dt * 0.12); filling = true; if (me.fuel >= 1) say('⛽ Tanque lleno'); } break; }
+      { const L = lotAt(me.x, me.y); if (L) for (const b of L.st.bays) if (L.u > b.u0 + 0.6 && L.u < b.u1 - 0.6 && L.v > b.v0 + 0.2 && L.v < b.v1 - 0.2) { inBay = true; if (Math.abs(me.vf) < 0.5 && me.dmg > 0) { me.dmg = Math.max(0, me.dmg - dt * 0.12); repairing = true; if (me.dmg === 0) { me.hits = []; say('🔧 Auto reparado'); } else if (me.hits.length && me.hits.length > Math.ceil(me.dmg * 14)) me.hits.shift(); } if (Math.abs(me.vf) < 0.5 && me.fuel < 1) { me.fuel = Math.min(1, me.fuel + dt * 0.12); filling = true; if (me.fuel >= 1) say('⛽ Tanque lleno'); } break; }
         if (L && !inBay && me.fuel < 0.95 && fuelWarn <= 0) { say('Pará dentro de un recuadro amarillo, al lado del surtidor'); fuelWarn = 6; } }
       if (brk) a += me.vf > 0.3 ? -9.5 * wet : -3 * (me.vf > -6 ? 1 : 0);
       if (hb) a += me.vf > 0 ? -4 : 4;
@@ -660,7 +751,7 @@
         const ca2 = Math.cos(me.a), sa2 = Math.sin(me.a);
         let vx = ca2 * me.vf - sa2 * me.vr, vy = sa2 * me.vf + ca2 * me.vr;
         const vn = vx * nx + vy * ny;
-        if (vn > 0) { vx -= nx * vn * 1.3; vy -= ny * vn * 1.3; if (vn > 7) crash('¡Te subiste al cordón!'); }
+        if (vn > 0) { vx -= nx * vn * 1.3; vy -= ny * vn * 1.3; if (vn > 7) { crash('¡Te subiste al cordón!'); const [lx, ly] = toLocal(me, me.x + nx * 3, me.y + ny * 3); hurt(me, vn * 0.6, lx * 2, ly * 2); } }
         // apoyado contra el cordón: la trompa se acomoda a lo largo del cordón para poder seguir (no se traba)
         if (thr || brk) { const fx = Math.cos(me.a) * Math.sign(me.vf || (thr ? 1 : -1)), fy = Math.sin(me.a) * Math.sign(me.vf || (thr ? 1 : -1)); if (fx * nx + fy * ny > 0.05) { let tx = -ny, ty = nx; if (tx * fx + ty * fy < 0) { tx = -tx; ty = -ty; } const want = Math.atan2(ty, tx) + (me.vf < 0 || (!me.vf && !thr) ? Math.PI : 0); me.a += angDiff(want - me.a) * Math.min(1, dt * 3.2); } }
         me.vf = (vx * ca2 + vy * sa2) * Math.exp(-dt * 0.5); me.vr = -vx * sa2 + vy * ca2;
@@ -678,7 +769,7 @@
       // choques con casas
       const ca = Math.cos(me.a), sa = Math.sin(me.a), hl = me.len / 2 - 0.2, hw = me.wid / 2 - 0.1;
       for (const [fx, fy] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw]]) {
-        if (solidAt(me.x + ca * fx - sa * fy, me.y + sa * fx + ca * fy)) { me.x = px; me.y = py; if (Math.abs(me.vf) > 4) crash('¡Chocaste contra una casa!'); me.vf *= -0.25; me.vr = 0; break; }
+        if (solidAt(me.x + ca * fx - sa * fy, me.y + sa * fx + ca * fy)) { me.x = px; me.y = py; if (Math.abs(me.vf) > 4) { crash('¡Chocaste contra una casa!'); hurt(me, Math.abs(me.vf), fx, fy); } me.vf *= -0.25; me.vr = 0; break; }
       }
       // choques con autos
       for (const c of cars) {
@@ -686,7 +777,11 @@
         if (d < minD && d > 0) {
           const push = (minD - d), ux = dx / d, uy = dy / d;
           me.x -= ux * push; me.y -= uy * push;
-          if (Math.abs(me.vf) > 3) crash('¡Choque!');
+          if (Math.abs(me.vf) > 3 && clock - (c.hitT || -9) > 0.8) {
+            crash('¡Choque!'); c.hitT = clock; const sp = Math.abs(me.vf);
+            const [lx, ly] = toLocal(me, c.x, c.y); hurt(me, sp, lx * 3, ly * 3);
+            const [ox, oy] = toLocal(c, me.x, me.y); hurt(c, sp, ox * 3, oy * 3); c.haz = true; c.hazT = 6;
+          }
           me.vf *= 0.35; c.v = 0;
         }
       }
@@ -700,6 +795,13 @@
       me.inLight = inside;
     }
     let lastCrash = 0;
+    // daños: abolladuras en el punto del golpe (coordenadas del vehículo), y el total 0..1
+    function hurt(o, spd, lx, ly) {
+      const sev = Math.max(0.02, Math.min(0.35, (spd - 2) / 32)); o.dmg = Math.min(1, (o.dmg || 0) + sev);
+      const hx = Math.max(-o.len / 2, Math.min(o.len / 2, lx)), hy = Math.max(-o.wid / 2, Math.min(o.wid / 2, ly));
+      (o.hits || (o.hits = [])).push([hx, hy, sev, Math.random()]); if (o.hits.length > 14) o.hits.shift();
+    }
+    const toLocal = (o, x, y) => { const dx = x - o.x, dy = y - o.y, c = Math.cos(o.a), s2 = Math.sin(o.a); return [dx * c + dy * s2, -dx * s2 + dy * c]; };
     function crash(t) { if (clock - lastCrash < 1.2) return; lastCrash = clock; stats.crash++; if (job) job.crash++; say(t, true); }
     function say(t, bad) { toastEl.textContent = t; toastEl.className = 'br-toast on' + (bad ? ' bad' : ''); toastT = 2.2; }
 
@@ -810,6 +912,7 @@
       const sp = sprite(T, T === 'police' ? '#f2f2f2' : c.c, L, Wd, mine);
       ctx.drawImage(sp, -L / 2 - 0.3, -Wd / 2 - 0.3, L + 0.6, Wd + 0.6);
       if (T === 'police') { const f = (clock * 3) % 1 < 0.5, act = mine ? siren : true; ctx.fillStyle = act && f ? '#ff2a2a' : '#6a1414'; ctx.fillRect(-L * 0.06, -Wd / 2 + 0.3, 0.38, (Wd - 0.6) / 2); ctx.fillStyle = act && !f ? '#2a6bff' : '#14266a'; ctx.fillRect(-L * 0.06, 0, 0.38, (Wd - 0.6) / 2); if (act) { ctx.fillStyle = f ? 'rgba(255,40,40,.25)' : 'rgba(40,100,255,.25)'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, TAU); ctx.fill(); } }
+      if (c.hits && c.hits.length && T !== 'moto') drawDamage(c, L, Wd);
       const brake = mine ? keys.down && me.vf > 0.5 : c.brake;
       const on = (clock * 2.6) % 1 < 0.5;
       const sigL = mine ? (blink.l || blink.haz) : (c.sig === -1 || c.haz), sigR = mine ? (blink.r || blink.haz) : (c.sig === 1 || c.haz);
@@ -819,13 +922,55 @@
       if (brake) { ctx.fillStyle = 'rgba(255,40,40,.25)'; ctx.beginPath(); ctx.arc(-L / 2, 0, 1.6, 0, TAU); ctx.fill(); }
       ctx.restore();
     }
+    // abolladuras, rayones, ópticas rotas y parabrisas astillado
+    function drawDamage(c, L, Wd) {
+      ctx.save(); ctx.beginPath(); ctx.roundRect(-L / 2, -Wd / 2, L, Wd, 0.5); ctx.clip();
+      for (const [hx, hy, sev, sd] of c.hits) {
+        const r = 0.35 + sev * 2;
+        const gr = ctx.createRadialGradient(hx, hy, 0, hx, hy, r); gr.addColorStop(0, 'rgba(10,10,12,.72)'); gr.addColorStop(0.55, 'rgba(30,30,34,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(hx, hy, r * 1.25, r * 0.8, sd * 3, 0, TAU); ctx.fill();
+        // chapa arrugada: pliegues oscuros y claros alrededor del golpe
+        ctx.lineWidth = 0.05; for (let k = 0; k < 2 + sev * 9; k++) { const a = sd * 20 + k * 1.7, d0 = r * 0.25, d1 = r * (0.7 + ((k * 0.43 + sd) % 1) * 0.4); ctx.strokeStyle = k % 2 ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.moveTo(hx + Math.cos(a) * d0, hy + Math.sin(a) * d0 * 0.8); ctx.lineTo(hx + Math.cos(a + 0.3) * (d0 + d1) / 2, hy + Math.sin(a - 0.2) * (d0 + d1) / 2 * 0.8); ctx.lineTo(hx + Math.cos(a) * d1, hy + Math.sin(a) * d1 * 0.8); ctx.stroke(); }
+        // pintura saltada (se ve el metal / la masilla)
+        ctx.fillStyle = 'rgba(190,192,196,.55)'; for (let k = 0; k < 3 + sev * 10; k++) { const a = sd * 40 + k * 2.1, d = r * (0.2 + ((k * 0.37 + sd) % 1) * 0.7); ctx.fillRect(hx + Math.cos(a) * d, hy + Math.sin(a) * d * 0.7, 0.12 + sev * 0.2, 0.05); }
+        // rayones a lo largo de la chapa
+        ctx.strokeStyle = 'rgba(225,228,232,.6)'; ctx.lineWidth = 0.035; ctx.beginPath();
+        for (let k = 0; k < 2 + sev * 8; k++) { const oy = (k - 2) * 0.07 + (sd - 0.5) * 0.2, len = 0.4 + sev * 2 + ((k * 0.61 + sd) % 1) * 0.5; ctx.moveTo(hx - len / 2, hy + oy); ctx.lineTo(hx + len / 2, hy + oy + (sd - 0.5) * 0.08); }
+        ctx.stroke();
+        // óptica rota si el golpe fue adelante o atrás
+        if (sev > 0.08 && Math.abs(hx) > L / 2 - 0.9) {
+          const fx = hx > 0 ? L / 2 - 0.25 : -L / 2 + 0.05, fy = hy < 0 ? -Wd / 2 + 0.12 : Wd / 2 - 0.5;
+          ctx.fillStyle = '#1a1a1a'; ctx.fillRect(fx, fy, 0.2, 0.38);
+          ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(fx + 0.05, fy + 0.1, 0.05, 0.05); ctx.fillRect(fx + 0.1, fy + 0.25, 0.04, 0.04);
+        }
+      }
+      // parabrisas astillado cuando el daño es grande
+      if ((c.dmg || 0) > 0.35) {
+        const wx = L / 2 * 0.17, s0 = c.hits[0][3];
+        ctx.strokeStyle = 'rgba(235,240,245,.75)'; ctx.lineWidth = 0.03; ctx.beginPath();
+        for (let k = 0; k < 7; k++) { const a = k * 0.9 + s0 * 6; ctx.moveTo(wx, (s0 - 0.5) * 0.6); ctx.lineTo(wx + Math.cos(a) * 0.45, (s0 - 0.5) * 0.6 + Math.sin(a) * 0.55); }
+        ctx.stroke(); ctx.beginPath(); ctx.arc(wx, (s0 - 0.5) * 0.6, 0.18, 0, TAU); ctx.stroke();
+      }
+      ctx.restore();
+    }
     function drawLights() {
       for (const L of G.lights.values()) {
         if (Math.abs(L.x - camX) > W / zoom || Math.abs(L.y - camY) > Hh / zoom) continue;
         for (const a of L.apps) {
           if (!a.inbound) continue;
-          const st = lightState(L, a.g), d = L.maxW / 2 + 3.6, rx = -a.uy, ry = a.ux;
-          const x = L.x - a.ux * d + rx * (a.w / 2 + 1.4), y = L.y - a.uy * d + ry * (a.w / 2 + 1.4);
+          const st = lightState(L, a.g);
+          if (a.px == null) {
+            // el poste va en la vereda, a la derecha: si cae sobre otra calle, se corre hacia afuera o hacia atrás
+            const rx = -a.uy, ry = a.ux; let best = null;
+            outer: for (const back of [0, 2, 4, 6, 9]) for (const lat of [1.4, 2, 2.6, 3.4]) {
+              const d = L.maxW / 2 + 3.6 + back, x = L.x - a.ux * d + rx * (a.w / 2 + lat), y = L.y - a.uy * d + ry * (a.w / 2 + lat);
+              let ok = true; for (const t of [-1.6, 0, 1.6]) { const q = nearestRoad(x + a.ux * t, y + a.uy * t); if (q && q.d < 0.35) { ok = false; break; } }
+              if (ok) { best = [x, y]; break outer; }
+            }
+            if (!best) { const d = L.maxW / 2 + 3.6; best = [L.x - a.ux * d + rx * (a.w / 2 + 1.4), L.y - a.uy * d + ry * (a.w / 2 + 1.4)]; }
+            a.px = best[0]; a.py = best[1];
+          }
+          const x = a.px, y = a.py;
           ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(a.uy, a.ux));
           ctx.fillStyle = '#16181c'; ctx.beginPath(); ctx.roundRect(-0.6, -1.7, 1.2, 3.4, 0.3); ctx.fill();
           const col = { r: '#ff3b30', y: '#ffc400', g: '#30d158' }, ys = { r: -1.05, y: 0, g: 1.05 };
@@ -836,33 +981,51 @@
       }
     }
     const toScr = (x, y) => [W / 2 + (x - camX) * zoom, Hh / 2 + (y - camY) * zoom];
+    // elige la esquina del cruce donde el cartel no pisa la calle (y distinta de la del otro cartel)
+    function placeSign(s2) {
+      const ca = Math.cos(s2.ang), sa = Math.sin(s2.ang); let best = null;
+      for (const sg of [1, -1]) for (const side of [1, -1]) {
+        const ux = ca * sg, uy = sa * sg, nx = -uy * side, ny = ux * side;
+        const dx = ux + nx, dy = uy + ny; if (s2.cor.used.some(([qx, qy]) => qx * dx + qy * dy > 1.2)) continue;
+        const ax = s2.x0 + ux * (s2.ow / 2 + 1.6) + nx * (s2.w / 2 + 0.8), ay = s2.y0 + uy * (s2.ow / 2 + 1.6) + ny * (s2.w / 2 + 0.8);
+        let bad = 0;
+        for (const t of [0, 3, 6, 9, 12]) for (const v of [0.2, 1.3, 2.4]) { const q = nearestRoad(ax + ux * t + nx * v, ay + uy * t + ny * v); if (q && q.d < 0.15) bad += 2; else if (q && inBuilding(ax + ux * t + nx * v, ay + uy * t + ny * v) && q.d > 3.2) bad += 0.3; }
+        const sc = bad + (side === 1 ? 0 : 0.1) + (sg === 1 ? 0 : 0.05);
+        if (!best || sc < best.sc) best = { sc, ax, ay, ux, uy, nx, ny, dx, dy };
+      }
+      if (!best || best.sc >= 6) { s2.hide = true; return; }
+      Object.assign(s2, { x: best.ax, y: best.ay, ux: best.ux, uy: best.uy, nx: best.nx, ny: best.ny }); s2.cor.used.push([best.dx, best.dy]);
+    }
+    // carteles de esquina al estilo porteño: placa negra, nombre en blanco y flecha con el sentido de la calle
     function drawSigns() {
-      ctx.save(); ctx.font = '700 11px system-ui, Segoe UI, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+      ctx.save(); ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
       const placed = [];
       for (const s2 of G.signs) {
-        if (s2.ok === undefined) {
-          // si por la forma de la esquina quedó sobre el asfalto, se corre hacia la vereda
-          let k = 0; while (k < 10) { const q = nearestRoad(s2.x, s2.y); if (!q || q.d > 0.8) break; s2.x += s2.nx * 0.8; s2.y += s2.ny * 0.8; k++; }
-          s2.ok = true;
-        }
-        const [px, py] = toScr(s2.x, s2.y); if (px < -220 || py < -220 || px > W + 220 || py > Hh + 220) continue;
-        const t = s2.name.length > 24 ? s2.name.slice(0, 23) + '…' : s2.name, w = ctx.measureText(t).width + 16, hh = 17;
-        // el cartel queda paralelo a su calle y se extiende alejándose del cruce
-        const cx = px + s2.ux * (w / 2 + 2), cy = py + s2.uy * (w / 2 + 2);
+        if (s2.ok === undefined) { placeSign(s2); s2.ok = true; }
+        if (s2.hide) continue;
+        const [px, py] = toScr(s2.x, s2.y); if (px < -260 || py < -260 || px > W + 260 || py > Hh + 260) continue;
+        ctx.font = '800 11.5px "Arial Narrow", "Roboto Condensed", system-ui, sans-serif';
+        const nm = s2.name.toUpperCase(), t = nm.length > 26 ? nm.slice(0, 25) + '…' : nm, tw = ctx.measureText(t).width, aw = 25, w = tw + 18 + aw, hh = 20;
+        const cx = px + s2.ux * (w / 2 + 3) + s2.nx * (hh / 2 + 1), cy = py + s2.uy * (w / 2 + 3) + s2.ny * (hh / 2 + 1);
         let ang = Math.atan2(s2.uy, s2.ux); if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
         const ex = Math.abs(Math.cos(ang)) * w / 2 + Math.abs(Math.sin(ang)) * hh / 2, ey = Math.abs(Math.sin(ang)) * w / 2 + Math.abs(Math.cos(ang)) * hh / 2;
         const box = [cx - ex, cy - ey, cx + ex, cy + ey];
         if (placed.some(r => box[0] < r[2] + 3 && box[2] > r[0] - 3 && box[1] < r[3] + 3 && box[3] > r[1] - 3)) continue;
         placed.push(box);
         // poste
-        ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.arc(px + 1.5, py + 1.5, 3, 0, TAU); ctx.fill();
-        ctx.fillStyle = '#d7dade'; ctx.beginPath(); ctx.arc(px, py, 3, 0, TAU); ctx.fill(); ctx.strokeStyle = '#4a4f57'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.arc(px + 1.6, py + 1.6, 2.6, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#2b2d31'; ctx.beginPath(); ctx.arc(px, py, 2.6, 0, TAU); ctx.fill(); ctx.strokeStyle = '#9aa0a8'; ctx.lineWidth = 0.8; ctx.stroke();
         ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang);
-        ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.fillRect(-w / 2 + 2, -hh / 2 + 2, w, hh);
-        ctx.fillStyle = '#123f6b'; ctx.fillRect(-w / 2, -hh / 2, w, hh);
-        ctx.fillStyle = '#1d5a94'; ctx.fillRect(-w / 2, -hh / 2, w, 4);
-        ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1; ctx.strokeRect(-w / 2 + 2, -hh / 2 + 2, w - 4, hh - 4);
-        ctx.fillStyle = '#fff'; ctx.fillText(t, 0, 0.5);
+        ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(-w / 2 + 2, -hh / 2 + 2, w, hh);
+        ctx.fillStyle = '#141414'; ctx.fillRect(-w / 2, -hh / 2, w, hh);
+        ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 0.9; ctx.strokeRect(-w / 2 + 1.5, -hh / 2 + 1.5, w - 3, hh - 3);
+        const sx = w / 2 - aw; ctx.beginPath(); ctx.moveTo(sx, -hh / 2 + 1.5); ctx.lineTo(sx, hh / 2 - 1.5); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.fillText(t, -aw / 2, 0.5);
+        // flecha: hacia dónde circula la calle (doble si es de doble mano)
+        const mx = sx + aw / 2; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6;
+        const head = (dir) => { ctx.beginPath(); ctx.moveTo(mx + dir * 8, 0); ctx.lineTo(mx + dir * 3.5, -3.6); ctx.lineTo(mx + dir * 3.5, 3.6); ctx.closePath(); ctx.fill(); };
+        if (s2.flow == null) { ctx.beginPath(); ctx.moveTo(mx - 5, 0); ctx.lineTo(mx + 5, 0); ctx.stroke(); head(1); head(-1); }
+        else { const rel = Math.cos(s2.flow - ang) >= 0 ? 1 : -1; ctx.beginPath(); ctx.moveTo(mx - rel * 8, 0); ctx.lineTo(mx + rel * 4, 0); ctx.stroke(); head(rel); }
         ctx.restore();
       }
       ctx.restore();
@@ -910,7 +1073,7 @@
     }
     function draw() {
       if (!G || !me) return;
-      ctx.fillStyle = '#b9b3a6'; ctx.fillRect(0, 0, W, Hh);
+      ctx.fillStyle = '#7f8a63'; ctx.fillRect(0, 0, W, Hh);
       ctx.save();
       ctx.translate(W / 2, Hh / 2); ctx.scale(zoom, zoom); ctx.translate(-camX, -camY);
       const vx0 = camX - W / 2 / zoom, vy0 = camY - Hh / 2 / zoom, vx1 = camX + W / 2 / zoom, vy1 = camY + Hh / 2 / zoom;
@@ -936,6 +1099,13 @@
       if (job) { const p = 1 + Math.sin(clock * 5) * 0.15; ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(job.x, job.y, 12 * p, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,214,10,.18)'; ctx.fill(); }
       for (const c of cars) if (c.x > vx0 - 12 && c.x < vx1 + 12 && c.y > vy0 - 12 && c.y < vy1 + 12) drawCar(c);
       drawCar(me, true);
+      // humo del motor cuando el auto está muy golpeado
+      if ((me.dmg || 0) > 0.55 && state === 'run') {
+        if (smoke.length < 60 && Math.random() < (me.dmg - 0.45) * 0.7) { const fx = me.x + Math.cos(me.a) * me.len * 0.32, fy = me.y + Math.sin(me.a) * me.len * 0.32; smoke.push([fx - Math.cos(me.a) * 0.6, fy - Math.sin(me.a) * 0.6, (Math.random() - 0.5) * 0.8 - Math.cos(me.a) * me.vf * 0.15, (Math.random() - 0.5) * 0.8 - Math.sin(me.a) * me.vf * 0.15, 1.6]); }
+      }
+      for (const p2 of smoke) { p2[0] += p2[2] * 0.016; p2[1] += p2[3] * 0.016; p2[4] -= 0.016; }
+      smoke = smoke.filter(p2 => p2[4] > 0);
+      for (const p2 of smoke) { const t2 = 1.6 - p2[4]; ctx.fillStyle = `rgba(${me.dmg > 0.85 ? 40 : 120},${me.dmg > 0.85 ? 40 : 120},${me.dmg > 0.85 ? 44 : 124},${0.28 * Math.min(1, t2 * 3) * p2[4] / 1.6})`; ctx.beginPath(); ctx.arc(p2[0], p2[1], 0.25 + t2 * 1.5, 0, TAU); ctx.fill(); }
       drawLights();
       ctx.restore();
       if (!isNight() && lights !== 'off') { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const [x, y] = toScr(me.x + Math.cos(me.a) * me.len / 2, me.y + Math.sin(me.a) * me.len / 2), Lb = (lights === 'high' ? 40 : 24) * zoom; const gr = ctx.createRadialGradient(x, y, 0, x, y, Lb); gr.addColorStop(0, 'rgba(255,250,220,.13)'); gr.addColorStop(1, 'rgba(255,250,220,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, Lb, me.a - 0.4, me.a + 0.4); ctx.closePath(); ctx.fill(); ctx.restore(); }
@@ -1062,6 +1232,7 @@
       if (street) h2 += `<span>📍 ${street.replace(/</g, '')}</span>`;
       if (mode === 'entregas' && job) h2 += `<span>📦 ${job.street.replace(/</g, '')} · ${(Math.hypot(job.x - me.x, job.y - me.y) / 1000).toFixed(2)} km · ${Math.max(0, Math.ceil(job.time))} s</span>`;
       h2 += `<span>🚦 ${stats.red}</span><span>💥 ${stats.crash}</span>`;
+      if (me.dmg > 0.005) h2 += `<span style="color:${me.dmg > 0.6 ? '#ff8a80' : me.dmg > 0.3 ? '#ffd27a' : '#fff'}">🔧 Daños ${Math.round(me.dmg * 100)}%${repairing ? ' · reparando…' : ''}</span>`;
       if (mode === 'entregas') h2 += `<span>${stats.pts} pts</span>`;
       hud.innerHTML = h2;
     }
@@ -1081,7 +1252,7 @@
       G = prepare(m); tiles.clear(); mapId = id; const s = H.get(); s.map = id; H.set(s);
       buildMini(); startCar(); autoLights(); cars = []; skids = []; stats = { red: 0, crash: 0, done: 0, pts: 0 }; job = null;
       for (let i = 0; i < 30; i++) spawnCar(false);
-      window.__barrioG = G; window.__barrio = { cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y) };
+      window.__barrioG = G; window.__barrio = { raw: () => cars, cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y) };
       msg.hidden = true; closeOver(root); state = 'run'; fit();
       H.status([m.name.split(',').slice(0, 2).join(','), `${G.lights.size} semáforos`]);
       if (mode === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras');
