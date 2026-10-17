@@ -1,64 +1,64 @@
 {
-  "juegos": [
-    {
-      "id": "rally",
-      "n": "Rally",
-      "d": "Carreras vistas desde arriba: 3 vueltas contra la compu, con 4 vehículos para elegir.",
-      "c": "#d35400",
-      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#4f9a3f\"/><path d=\"M14 50c-8-10-6-30 8-36s30-2 32 12-10 14-16 18-16 16-24 6z\" fill=\"none\" stroke=\"#5a5d63\" stroke-width=\"9\" stroke-linejoin=\"round\"/><path d=\"M14 50c-8-10-6-30 8-36s30-2 32 12-10 14-16 18-16 16-24 6z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1\" stroke-dasharray=\"3 3\"/><g transform=\"rotate(-30 22 18)\"><rect x=\"15\" y=\"14\" width=\"14\" height=\"8\" rx=\"2\" fill=\"#e8202a\"/><rect x=\"22\" y=\"15\" width=\"3\" height=\"6\" fill=\"#1d2633\"/></g><g transform=\"rotate(60 50 34)\"><rect x=\"43\" y=\"30\" width=\"14\" height=\"8\" rx=\"2\" fill=\"#2f6fed\"/></g></svg>",
-      "tipo": "Carreras",
-      "v": "3",
-      "file": "rally.js",
-      "size": 18658,
-      "sha256": "3b773ebb1756dfaac2daeefc274d3b1f6d3988c1b32e2200c51c89946a2ad0e6"
-    },
-    {
-      "id": "dogfight",
-      "n": "Duelo aéreo",
-      "d": "Combate de aviones: jet moderno o la Primera Guerra (bandos, lugares y el Barón Rojo).",
-      "c": "#2a6aa8",
-      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#3d86c6\"/><circle cx=\"46\" cy=\"44\" r=\"12\" fill=\"rgba(255,255,255,.35)\"/><g transform=\"rotate(-35 22 30)\"><path d=\"M34 30l-6-2-3-8h-3l1 8-6 1-2-3h-2l1 4-1 4h2l2-3 6 1-1 8h3l3-8z\" fill=\"#e8202a\"/></g><g transform=\"rotate(150 46 22)\"><path d=\"M58 22l-6-2-3-8h-3l1 8-6 1-2-3h-2l1 4-1 4h2l2-3 6 1-1 8h3l3-8z\" fill=\"#2f6fed\"/></g><path d=\"M30 24l8-5\" stroke=\"#fffbcc\" stroke-width=\"2.5\" stroke-linecap=\"round\"/><circle cx=\"41\" cy=\"18\" r=\"3\" fill=\"#ffb347\"/></svg>",
-      "tipo": "Acción",
-      "v": "4",
-      "file": "dogfight.js",
-      "size": 33120,
-      "sha256": "9fb7e1a847da8590c096a4bd1f91369134278370e0a34a584d992fe78d796c7b"
-    },
-    {
-      "id": "pingpong",
-      "n": "Ping pong",
-      "d": "El clásico de paletas contra la compu, a 7 puntos.",
-      "c": "#1f6f5c",
-      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1f6f5c\"/><rect x=\"6\" y=\"6\" width=\"52\" height=\"52\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M32 6v52\" stroke=\"#fff\" stroke-width=\"2\" stroke-dasharray=\"4 4\"/><rect x=\"10\" y=\"20\" width=\"5\" height=\"16\" fill=\"#e8202a\"/><rect x=\"49\" y=\"28\" width=\"5\" height=\"16\" fill=\"#2f6fed\"/><circle cx=\"36\" cy=\"26\" r=\"3.5\" fill=\"#fff\"/></svg>",
-      "tipo": "Clásicos",
-      "v": "2",
-      "file": "pingpong.js",
-      "size": 6630,
-      "sha256": "aa9d3c4578210e13d66b3a618df033111962c5534b43a2f9293ea08cfeea9ad1"
-    },
-    {
-      "id": "barrio",
-      "n": "Manejá por tu barrio",
-      "d": "Tus calles reales vistas desde arriba, con semáforos, tránsito y entregas. Necesita Base 2.27.",
-      "c": "#3a6b8f",
-      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#b9b3a6\"/><path d=\"M0 22h64M0 46h64M20 0v64M46 0v64\" stroke=\"#4b4e54\" stroke-width=\"9\"/><path d=\"M0 22h64M20 0v64\" stroke=\"#e0b43a\" stroke-width=\"0.8\" stroke-dasharray=\"3 3\"/><rect x=\"26\" y=\"26\" width=\"14\" height=\"14\" fill=\"#b0603c\"/><rect x=\"4\" y=\"4\" width=\"10\" height=\"12\" fill=\"#8e8e8a\"/><rect x=\"52\" y=\"52\" width=\"9\" height=\"9\" fill=\"#6f8f4e\"/><rect x=\"28\" y=\"19\" width=\"9\" height=\"5\" rx=\"1.2\" fill=\"#d3202a\"/><rect x=\"43\" y=\"30\" width=\"5\" height=\"9\" rx=\"1.2\" fill=\"#f2f2f2\"/><circle cx=\"16\" cy=\"18\" r=\"2\" fill=\"#30d158\"/></svg>",
-      "tipo": "Manejo",
-      "v": "8",
-      "file": "barrio.js",
-      "size": 77930,
-      "sha256": "3ac4a97f4c0d896a9205cc722a0acc18f805172253639b0dab81e2f6f0035512"
-    },
-    {
-      "id": "futbol",
-      "n": "Fútbol 5",
-      "d": "Partido de fútbol 5 contra la compu: pases, gambetas, remates y paredes.",
-      "c": "#2a7f3d",
-      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2a7f3d\"/><rect x=\"0\" y=\"0\" width=\"16\" height=\"64\" fill=\"#2f8a43\"/><rect x=\"32\" y=\"0\" width=\"16\" height=\"64\" fill=\"#2f8a43\"/><rect x=\"5\" y=\"9\" width=\"54\" height=\"46\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><path d=\"M32 9v46\" stroke=\"#fff\" stroke-width=\"1.6\"/><circle cx=\"32\" cy=\"32\" r=\"7\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><circle cx=\"22\" cy=\"26\" r=\"3.4\" fill=\"#6cb4ee\" stroke=\"#fff\"/><circle cx=\"42\" cy=\"38\" r=\"3.4\" fill=\"#d62828\" stroke=\"#fff\"/><circle cx=\"31\" cy=\"31\" r=\"2\" fill=\"#fff\" stroke=\"#222\" stroke-width=\".8\"/></svg>",
-      "tipo": "Deportes",
-      "v": "1",
-      "file": "futbol.js",
-      "size": 21752,
-      "sha256": "b485347b252ca7af5ff3a143d88f372a9b541c528ae3b07a2a52503c87957361"
-    }
-  ]
+ "juegos": [
+  {
+   "id": "rally",
+   "n": "Rally",
+   "d": "Carreras vistas desde arriba: 3 vueltas contra la compu, con 4 vehículos para elegir.",
+   "c": "#d35400",
+   "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#4f9a3f\"/><path d=\"M14 50c-8-10-6-30 8-36s30-2 32 12-10 14-16 18-16 16-24 6z\" fill=\"none\" stroke=\"#5a5d63\" stroke-width=\"9\" stroke-linejoin=\"round\"/><path d=\"M14 50c-8-10-6-30 8-36s30-2 32 12-10 14-16 18-16 16-24 6z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1\" stroke-dasharray=\"3 3\"/><g transform=\"rotate(-30 22 18)\"><rect x=\"15\" y=\"14\" width=\"14\" height=\"8\" rx=\"2\" fill=\"#e8202a\"/><rect x=\"22\" y=\"15\" width=\"3\" height=\"6\" fill=\"#1d2633\"/></g><g transform=\"rotate(60 50 34)\"><rect x=\"43\" y=\"30\" width=\"14\" height=\"8\" rx=\"2\" fill=\"#2f6fed\"/></g></svg>",
+   "tipo": "Carreras",
+   "v": "3",
+   "file": "rally.js",
+   "size": 18658,
+   "sha256": "3b773ebb1756dfaac2daeefc274d3b1f6d3988c1b32e2200c51c89946a2ad0e6"
+  },
+  {
+   "id": "dogfight",
+   "n": "Duelo aéreo",
+   "d": "Combate de aviones: jet moderno o la Primera Guerra (bandos, lugares y el Barón Rojo).",
+   "c": "#2a6aa8",
+   "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#3d86c6\"/><circle cx=\"46\" cy=\"44\" r=\"12\" fill=\"rgba(255,255,255,.35)\"/><g transform=\"rotate(-35 22 30)\"><path d=\"M34 30l-6-2-3-8h-3l1 8-6 1-2-3h-2l1 4-1 4h2l2-3 6 1-1 8h3l3-8z\" fill=\"#e8202a\"/></g><g transform=\"rotate(150 46 22)\"><path d=\"M58 22l-6-2-3-8h-3l1 8-6 1-2-3h-2l1 4-1 4h2l2-3 6 1-1 8h3l3-8z\" fill=\"#2f6fed\"/></g><path d=\"M30 24l8-5\" stroke=\"#fffbcc\" stroke-width=\"2.5\" stroke-linecap=\"round\"/><circle cx=\"41\" cy=\"18\" r=\"3\" fill=\"#ffb347\"/></svg>",
+   "tipo": "Acción",
+   "v": "4",
+   "file": "dogfight.js",
+   "size": 33120,
+   "sha256": "9fb7e1a847da8590c096a4bd1f91369134278370e0a34a584d992fe78d796c7b"
+  },
+  {
+   "id": "pingpong",
+   "n": "Ping pong",
+   "d": "El clásico de paletas contra la compu, a 7 puntos.",
+   "c": "#1f6f5c",
+   "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1f6f5c\"/><rect x=\"6\" y=\"6\" width=\"52\" height=\"52\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M32 6v52\" stroke=\"#fff\" stroke-width=\"2\" stroke-dasharray=\"4 4\"/><rect x=\"10\" y=\"20\" width=\"5\" height=\"16\" fill=\"#e8202a\"/><rect x=\"49\" y=\"28\" width=\"5\" height=\"16\" fill=\"#2f6fed\"/><circle cx=\"36\" cy=\"26\" r=\"3.5\" fill=\"#fff\"/></svg>",
+   "tipo": "Clásicos",
+   "v": "2",
+   "file": "pingpong.js",
+   "size": 6630,
+   "sha256": "aa9d3c4578210e13d66b3a618df033111962c5534b43a2f9293ea08cfeea9ad1"
+  },
+  {
+   "id": "barrio",
+   "n": "Manejá por tu barrio",
+   "d": "Tus calles reales vistas desde arriba, con semáforos, tránsito y entregas. Necesita Base 2.27.",
+   "c": "#3a6b8f",
+   "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#b9b3a6\"/><path d=\"M0 22h64M0 46h64M20 0v64M46 0v64\" stroke=\"#4b4e54\" stroke-width=\"9\"/><path d=\"M0 22h64M20 0v64\" stroke=\"#e0b43a\" stroke-width=\"0.8\" stroke-dasharray=\"3 3\"/><rect x=\"26\" y=\"26\" width=\"14\" height=\"14\" fill=\"#b0603c\"/><rect x=\"4\" y=\"4\" width=\"10\" height=\"12\" fill=\"#8e8e8a\"/><rect x=\"52\" y=\"52\" width=\"9\" height=\"9\" fill=\"#6f8f4e\"/><rect x=\"28\" y=\"19\" width=\"9\" height=\"5\" rx=\"1.2\" fill=\"#d3202a\"/><rect x=\"43\" y=\"30\" width=\"5\" height=\"9\" rx=\"1.2\" fill=\"#f2f2f2\"/><circle cx=\"16\" cy=\"18\" r=\"2\" fill=\"#30d158\"/></svg>",
+   "tipo": "Manejo",
+   "v": "9",
+   "file": "barrio.js",
+   "size": 88317,
+   "sha256": "9e23f7d390b7839dd5765cfbd5ad1b35c4dc0aeff17906ff4201bc1e1d46fa70"
+  },
+  {
+   "id": "futbol",
+   "n": "Fútbol 5",
+   "d": "Partido de fútbol 5 contra la compu: pases, gambetas, remates y paredes.",
+   "c": "#2a7f3d",
+   "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2a7f3d\"/><rect x=\"0\" y=\"0\" width=\"16\" height=\"64\" fill=\"#2f8a43\"/><rect x=\"32\" y=\"0\" width=\"16\" height=\"64\" fill=\"#2f8a43\"/><rect x=\"5\" y=\"9\" width=\"54\" height=\"46\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><path d=\"M32 9v46\" stroke=\"#fff\" stroke-width=\"1.6\"/><circle cx=\"32\" cy=\"32\" r=\"7\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><circle cx=\"22\" cy=\"26\" r=\"3.4\" fill=\"#6cb4ee\" stroke=\"#fff\"/><circle cx=\"42\" cy=\"38\" r=\"3.4\" fill=\"#d62828\" stroke=\"#fff\"/><circle cx=\"31\" cy=\"31\" r=\"2\" fill=\"#fff\" stroke=\"#222\" stroke-width=\".8\"/></svg>",
+   "tipo": "Deportes",
+   "v": "1",
+   "file": "futbol.js",
+   "size": 21752,
+   "sha256": "b485347b252ca7af5ff3a143d88f372a9b541c528ae3b07a2a52503c87957361"
+  }
+ ]
 }

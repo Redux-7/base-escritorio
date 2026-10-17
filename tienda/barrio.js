@@ -27,7 +27,7 @@
   // ===================== preparar el mapa =====================
   function prepare(m) {
     const S = 0.5;
-    const roads = m.roads.map((r) => { const p = []; for (let i = 0; i < r.p.length; i += 2) p.push([r.p[i] * S, r.p[i + 1] * S]); return { n: r.n, k: r.k, w: r.w, o: r.o, p, nd: r.nd && r.nd.length === p.length ? r.nd : null }; });
+    const roads = m.roads.map((r) => { const p = []; for (let i = 0; i < r.p.length; i += 2) p.push([r.p[i] * S, r.p[i + 1] * S]); return { n: r.n, k: r.k, w: r.k >= 7 ? r.w : r.w * 1.18 + 0.6, o: r.o, p, nd: r.nd && r.nd.length === p.length ? r.nd : null }; });
     // nodos del grafo: los puntos compartidos entre calles son esquinas
     const links = new Map();
     let fake = 1e7;
@@ -132,8 +132,12 @@
       const n = best; if (n == null) return;
       const [nx, ny] = nodePos(n); let mw = 0, ang = 0; for (const [ri, i] of links.get(n)) { const r = roads[ri]; if (r.w > mw) { mw = r.w; const j = i < r.p.length - 1 ? i + 1 : i - 1; ang = Math.atan2(r.p[j][1] - r.p[i][1], r.p[j][0] - r.p[i][0]); } }
       // en la vereda, al costado de la avenida y corrido de la esquina
-      const ux = Math.cos(ang), uy = Math.sin(ang), off = mw / 2 + 2 + 8;
-      G.stations.push({ x: nx + ux * 18 - uy * off, y: ny + uy * 18 + ux * off, ang, rx: nx + ux * 18 - uy * (mw / 2 - 1.5), ry: ny + uy * 18 + ux * (mw / 2 - 1.5) });
+      const ux = Math.cos(ang), uy = Math.sin(ang), vx = -uy, vy = ux;
+      // la playa arranca en el cordón y entra en la vereda/manzana; el centro está a 28 m de la esquina
+      const ex = nx + ux * 28 + vx * (mw / 2), ey = ny + uy * 28 + vy * (mw / 2);
+      const bays = [];
+      for (const iu of [-5, 5]) for (const bv of [[6, 8.6], [10.4, 13]]) bays.push({ u0: iu - 3.6, u1: iu + 3.6, v0: bv[0], v1: bv[1] });
+      G.stations.push({ ex, ey, ux, uy, vx, vy, ang, bays, x: ex + vx * 8.5, y: ey + vy * 8.5, rx: ex + vx * 7.3, ry: ey + vy * 7.3 });
     };
     for (const f of (m.fuel || [])) addStation(f[0] * S, f[1] * S);
     if (G.stations.length < 4) {
@@ -148,6 +152,16 @@
         const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 25) continue;
         const ux = (bx - ax) / L, uy = (by - ay) / L;
         for (let t = 12, k = 0; t < L - 8; t += 26, k++) { const off = r.w / 2 + 1.2; for (const sd of r.k <= 3 ? [-1, 1] : [(k + ri) % 2 ? 1 : -1]) G.lamps.push([ax + ux * t - uy * off * sd, ay + uy * t + ux * off * sd]); }
+      }
+    });
+    // charcos (solo se ven con lluvia): cerca del cordón, al azar pero siempre en el mismo lugar
+    G.puddles = [];
+    roads.forEach((r, ri) => {
+      if (r.k > 6) return;
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 20) continue;
+        const ux = (bx - ax) / L, uy = (by - ay) / L;
+        for (let t = 10; t < L - 10; t += 22) { const q = hsh(ri * 131 + i, t | 0); if (q > 0.3) continue; const sd = q < 0.15 ? -1 : 1, off = r.w / 2 - 1.2 - q * 5; G.puddles.push([ax + ux * t - uy * off * sd, ay + uy * t + ux * off * sd, 1.4 + q * 7, Math.atan2(uy, ux), q]); }
       }
     });
     // árboles en las veredas
@@ -185,13 +199,21 @@
     let G = null, mapId = H.get().map || null, mode = H.get().mode === 'libre' ? 'libre' : 'entregas';
     let me, cars = [], keys = {}, raf = 0, lastT = 0, state = 'menu', clock = 0, skids = [], toastT = 0;
     const SIDE = 2.2;
+    // ¿el punto está dentro de la playa de una estación de servicio? (devuelve la estación y las coordenadas locales)
+    function lotAt(x, y) {
+      for (const st of G.stations) { const dx = x - st.ex, dy = y - st.ey, u = dx * st.ux + dy * st.uy, v = dx * st.vx + dy * st.vy; if (u > -16 && u < 16 && v > -1 && v < 17) return { st, u, v }; }
+      return null;
+    }
     const WX = { dia: 'Día', noche: 'Noche', lluvia: 'Lluvia', noche_lluvia: 'Noche con lluvia' };
     let wx = WX[H.get().wx] ? H.get().wx : 'dia';
     const isNight = () => wx === 'noche' || wx === 'noche_lluvia', isRain = () => wx === 'lluvia' || wx === 'noche_lluvia';
+    let inBay = false, splash = [];
     let drops = [], dark = null, blink = { l: false, r: false, haz: false, a0: 0 }, lights = 'off', fuelWarn = 0, filling = false;
     const LIGHTS = { off: 'Luces apagadas', low: 'Luces bajas', high: 'Luces altas' };
     const autoLights = () => { if ((isRain() || isNight()) && lights === 'off') lights = 'low'; };
     let veh = VEH[H.get().veh] ? H.get().veh : 'auto', siren = false;
+    const DASH = { clasico: 'Tablero clásico', radar: 'Alrededor del radar', digital: 'Digital chico' };
+    let dash = DASH[H.get().dash] ? H.get().dash : 'clasico';
     let stats = { red: 0, crash: 0, done: 0, pts: 0 }, job = null, zoom = 5, camX = 0, camY = 0, mini = null;
 
     // ---------- mosaicos del mapa (se dibujan una vez y se reusan) ----------
@@ -225,7 +247,19 @@
       g.fillStyle = pat; g.fillRect(x0, y0, TILE, TILE);
       const inside = G.inRect(x0 - pad, y0 - pad, x1 + pad, y1 + pad);
       const path = (p, close) => { g.beginPath(); p.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); if (close) g.closePath(); };
-      for (const a of G.parks) if (inT(a.bb)) { path(a.p, true); g.fillStyle = '#6f8f4e'; g.fill(); }
+      for (const a of G.parks) if (inT(a.bb)) {
+        path(a.p, true); g.fillStyle = '#6f8f4e'; g.fill();
+        // pasto cortado a franjas y árboles adentro
+        g.save(); path(a.p, true); g.clip(); g.fillStyle = 'rgba(255,255,255,.05)';
+        for (let yy = Math.floor(a.bb[1] / 6) * 6; yy < a.bb[3]; yy += 12) g.fillRect(a.bb[0], yy, a.bb[2] - a.bb[0], 6);
+        for (let xx = Math.floor(a.bb[0] / 9) * 9; xx < a.bb[2]; xx += 9) for (let yy = Math.floor(a.bb[1] / 9) * 9; yy < a.bb[3]; yy += 9) {
+          const q = hsh(xx, yy); if (q > 0.35 || xx < x0 - 6 || xx > x1 + 6 || yy < y0 - 6 || yy > y1 + 6) continue;
+          const tx2 = xx + q * 8, ty2 = yy + (1 - q) * 8, rr = 2.2 + q * 4;
+          g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.arc(tx2 + 1.2, ty2 + 1.3, rr, 0, TAU); g.fill();
+          g.fillStyle = q < 0.17 ? '#3f5f2c' : '#4d6d35'; g.beginPath(); for (let kq = 0; kq < 5; kq++) { const an = kq * 1.26 + q * 9, d = rr * 0.4; g.moveTo(tx2 + Math.cos(an) * d + rr * 0.6, ty2 + Math.sin(an) * d); g.arc(tx2 + Math.cos(an) * d, ty2 + Math.sin(an) * d, rr * 0.6, 0, TAU); } g.fill();
+        }
+        g.restore();
+      }
       for (const a of G.water) if (inT(a.bb)) { path(a.p, true); g.fillStyle = '#4f7896'; g.fill(); }
       for (const a of G.rivers) if (inT(a.bb)) { path(a.p); g.strokeStyle = '#4f7896'; g.lineWidth = 7; g.lineJoin = g.lineCap = 'round'; g.stroke(); }
       for (const a of G.rails) if (inT(a.bb)) {
@@ -271,19 +305,33 @@
       }
       // estaciones de servicio
       for (const st of G.stations) {
-        if (st.x < x0 - 20 || st.x > x1 + 20 || st.y < y0 - 20 || st.y > y1 + 20) continue;
-        g.save(); g.translate(st.x, st.y); g.rotate(st.ang);
-        g.fillStyle = '#5a5d63'; g.fillRect(-11, -8, 22, 16);
-        g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(-7.5 + 1, -4.5 + 1, 15, 9);
-        g.fillStyle = '#f4f4f2'; g.fillRect(-7.5, -4.5, 15, 9); g.fillStyle = '#1f6fd6'; g.fillRect(-7.5, -4.5, 15, 1.1); g.fillRect(-7.5, 3.4, 15, 1.1);
-        // surtidores y el cartel
-        for (const px of [-3.5, 3.5]) { g.fillStyle = '#d6413a'; g.fillRect(px - 0.6, -1.1, 1.2, 2.2); g.fillStyle = '#fff'; g.fillRect(px - 0.35, -0.7, 0.7, 0.5); }
-        g.fillStyle = '#1f6fd6'; g.font = '800 2.2px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('ESTACIÓN', 0, -2.4); g.fillText('NAFTA', 0, 2.5);
+        if (st.x < x0 - 30 || st.x > x1 + 30 || st.y < y0 - 30 || st.y > y1 + 30) continue;
+        g.save(); g.translate(st.ex, st.ey); g.transform(st.ux, st.uy, st.vx, st.vy, 0, 0);
+        // playa de hormigón con rampas en el cordón
+        g.fillStyle = '#8d9096'; g.fillRect(-16, -0.6, 32, 17.6);
+        g.fillStyle = '#7d8086'; for (let u = -16; u < 16; u += 4) for (let v = 0; v < 17; v += 4) if (((u + v) / 4) % 2 === 0) g.fillRect(u, v, 4, 4);
+        g.fillStyle = '#d9d4ca'; g.fillRect(-16, 16.4, 32, 0.6);
+        // dársenas de carga (recuadros amarillos)
+        for (const bq of st.bays) { g.strokeStyle = '#f5c518'; g.lineWidth = 0.22; g.setLineDash([0.8, 0.5]); g.strokeRect(bq.u0, bq.v0, bq.u1 - bq.u0, bq.v1 - bq.v0); g.setLineDash([]); }
+        // islas con surtidores
+        for (const iu of [-5, 5]) { g.fillStyle = '#c7c2b8'; g.fillRect(iu - 3, 8.7, 6, 1.6); for (const pu of [iu - 1.5, iu + 1.5]) { g.fillStyle = '#d6413a'; g.fillRect(pu - 0.5, 9, 1, 1); g.fillStyle = '#fff'; g.fillRect(pu - 0.3, 9.15, 0.6, 0.3); } }
+        // techo (se ve semitransparente para ver los autos abajo)
+        g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(-10 + 1.4, 4.4 + 1.4, 20, 10);
+        g.fillStyle = 'rgba(244,244,242,.72)'; g.fillRect(-10, 4.4, 20, 10);
+        g.fillStyle = 'rgba(31,111,214,.85)'; g.fillRect(-10, 4.4, 20, 0.9); g.fillRect(-10, 13.5, 20, 0.9);
+
+        // flechas de entrada y salida
+        g.fillStyle = 'rgba(255,255,255,.75)'; for (const au of [-13, 13]) { g.beginPath(); g.moveTo(au, 1.5); g.lineTo(au + 0.9, 3.2); g.lineTo(au - 0.9, 3.2); g.closePath(); if (au > 0) { g.save(); g.translate(au, 2.35); g.rotate(Math.PI); g.translate(-au, -2.35); g.fill(); g.restore(); } else g.fill(); }
         g.restore();
+        // cartel derecho (siempre se lee)
+        const lx = st.ex + st.vx * 18.5, ly = st.ey + st.vy * 18.5;
+        g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(lx - 5.2 + 0.4, ly - 1.6 + 0.4, 10.4, 3.2);
+        g.fillStyle = '#1f6fd6'; g.fillRect(lx - 5.2, ly - 1.6, 10.4, 3.2); g.fillStyle = '#fff'; g.font = '800 1.7px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⛽ NAFTA', lx, ly + 0.1);
       }
       // árboles de vereda
       for (const [x, y, rr] of G.trees) {
         if (x < x0 - 6 || x > x1 + 6 || y < y0 - 6 || y > y1 + 6) continue;
+        if (lotAt(x, y)) continue;
         const q = hsh(x | 0, y | 0), base = q < 0.5 ? '#4b6a33' : '#577739';
         g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.arc(x + 1.1, y + 1.2, rr * 1.05, 0, TAU); g.fill();
         g.fillStyle = base; g.beginPath();
@@ -294,8 +342,9 @@
       // techos
       const ROOF = ['#b0603c', '#a35a3a', '#8e8e8a', '#c9bfae', '#9b8b74', '#b7aa98', '#7d7f84', '#c06a45'];
       for (const b of inside.buildings) {
-        if (G.stations.some(st => b.bb[2] > st.x - 13 && b.bb[0] < st.x + 13 && b.bb[3] > st.y - 10 && b.bb[1] < st.y + 10)) continue;
-        g.save(); g.translate(1.2, 1.2); path(b.p, true); g.fillStyle = 'rgba(0,0,0,.28)'; g.fill(); g.restore();
+        if (G.stations.some(st => b.bb[2] > st.x - 19 && b.bb[0] < st.x + 19 && b.bb[3] > st.y - 19 && b.bb[1] < st.y + 19 && [[b.bb[0], b.bb[1]], [b.bb[2], b.bb[3]], [b.bb[0], b.bb[3]], [b.bb[2], b.bb[1]], [(b.bb[0] + b.bb[2]) / 2, (b.bb[1] + b.bb[3]) / 2]].some(([qx, qy]) => { const dx = qx - st.ex, dy = qy - st.ey, u = dx * st.ux + dy * st.uy, v = dx * st.vx + dy * st.vy; return u > -17 && u < 17 && v > -1 && v < 18; }))) continue;
+        g.save(); g.translate(2.6, 2.4); path(b.p, true); g.fillStyle = 'rgba(0,0,0,.12)'; g.fill(); g.restore();
+        g.save(); g.translate(1.3, 1.2); path(b.p, true); g.fillStyle = 'rgba(0,0,0,.22)'; g.fill(); g.restore();
         const rc = ROOF[(b.c * ROOF.length) | 0];
         path(b.p, true); g.fillStyle = rc; g.fill();
         // techo a dos aguas: una mitad más oscura y la cumbrera
@@ -366,7 +415,7 @@
         const ty = bus ? 'bus' : q < 0.22 ? 'taxi' : q < 0.3 ? 'moto' : q < 0.37 ? 'pickup' : q < 0.41 && r.k <= 5 ? 'truck' : 'auto';
         const dims = { bus: [11.5, 2.55], taxi: [4.4, 1.85], moto: [2.1, 0.8], pickup: [5.3, 2], truck: [9, 2.5], auto: [4.3, 1.85] }[ty];
         const c = { ri, i: from, dir, t: Math.random(), v: SPEED[r.k] * 0.6, type: ty, c: bus ? '#e8e2d0' : ty === 'taxi' ? '#1b1b1d' : ty === 'truck' ? ['#d9d9d9', '#2f5d8a', '#b3201c'][Math.floor(Math.random() * 3)] : CAR_COLS[Math.floor(Math.random() * CAR_COLS.length)], len: dims[0], wid: dims[1], bus, lane: r.o ? (Math.random() < 0.5 ? -1 : 1) : 1, x, y, a: 0, brake: false, stuck: 0 };
-        placeCar(c); if (cars.some(o => Math.hypot(o.x - c.x, o.y - c.y) < 9)) continue;
+        c.snap = true; placeCar(c); if (cars.some(o => Math.hypot(o.x - c.x, o.y - c.y) < 9)) continue;
         cars.push(c); return;
       }
     }
@@ -374,7 +423,8 @@
     function placeCar(c) {
       const { r, A, B } = segOf(c), dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
       const off = r.o ? c.lane * Math.min(r.w / 4, 1.8) : Math.min(r.w / 4, 3.2);
-      c.x = A[0] + dx * c.t - uy * off; c.y = A[1] + dy * c.t + ux * off; c.a = Math.atan2(uy, ux); c.segL = L; c.ux = ux; c.uy = uy;
+      c.tx = A[0] + dx * c.t - uy * off; c.ty = A[1] + dy * c.t + ux * off; c.ta = Math.atan2(uy, ux); c.segL = L; c.ux = ux; c.uy = uy;
+      if (c.x == null || c.snap) { c.x = c.tx; c.y = c.ty; c.a = c.ta; c.snap = false; }
     }
     function planTurn(c) {
       const r = G.roads[c.ri], j = c.i + c.dir, n = r.nd[j];
@@ -439,8 +489,9 @@
         const dx = o.x - c.x, dy = o.y - c.y, ahead = dx * Math.cos(c.a) + dy * Math.sin(c.a), side = Math.abs(-dx * Math.sin(c.a) + dy * Math.cos(c.a));
         if (ahead > 0 && ahead < 32 && side < 2.4) { const gap = ahead - (c.len + (o.len || 4.3)) / 2 - 2.2; want = Math.min(want, Math.max(0, Math.sqrt(Math.max(0, 2 * 4.5 * gap)))); }
       }
-      // doblar más despacio
+      // doblar más despacio (y bastante más si el giro es cerrado)
       if (distEnd < 18) want = Math.min(want, Math.max(5, want * 0.7));
+      if (c.plan && distEnd < 20 && Math.abs(c.plan.turn) > 0.5) want = Math.min(want, 3.6 + (distEnd / 20) * 3);
       const acc = want > c.v ? 2.6 : -6;
       c.brake = want < c.v - 0.3;
       c.v = Math.max(0, c.v + Math.max(-6 * dt, Math.min(acc * dt, want - c.v)));
@@ -454,6 +505,12 @@
         placeCar(c);
       }
       placeCar(c);
+      // suavizado: el auto "corta" la esquina en curva en vez de girar de golpe
+      const kk = 1 - Math.exp(-dt * 5.5), ox = c.x, oy = c.y;
+      c.x += (c.tx - c.x) * kk; c.y += (c.ty - c.y) * kk;
+      const mvx = c.x - ox, mvy = c.y - oy;
+      if (mvx * mvx + mvy * mvy > 1e-4) { const want = Math.atan2(mvy, mvx); c.a += angDiff(want - c.a) * Math.min(1, dt * 9); }
+      else c.a += angDiff(c.ta - c.a) * Math.min(1, dt * 4);
     }
 
     // ---------- tu auto ----------
@@ -486,7 +543,9 @@
       fuelWarn -= dt;
       // cargar nafta: frenado al lado de una estación
       filling = false;
-      for (const st of G.stations) if (Math.hypot(st.rx - me.x, st.ry - me.y) < 14 && Math.abs(me.vf) < 1.2 && me.fuel < 1) { me.fuel = Math.min(1, me.fuel + dt * 0.12); filling = true; if (me.fuel >= 1) say('⛽ Tanque lleno'); break; }
+      inBay = false;
+      { const L = lotAt(me.x, me.y); if (L) for (const b of L.st.bays) if (L.u > b.u0 + 0.6 && L.u < b.u1 - 0.6 && L.v > b.v0 + 0.2 && L.v < b.v1 - 0.2) { inBay = true; if (Math.abs(me.vf) < 0.5 && me.fuel < 1) { me.fuel = Math.min(1, me.fuel + dt * 0.12); filling = true; if (me.fuel >= 1) say('⛽ Tanque lleno'); } break; }
+        if (L && !inBay && me.fuel < 0.95 && fuelWarn <= 0) { say('Pará dentro de un recuadro amarillo, al lado del surtidor'); fuelWarn = 6; } }
       if (brk) a += me.vf > 0.3 ? -9.5 * wet : -3 * (me.vf > -6 ? 1 : 0);
       if (hb) a += me.vf > 0 ? -4 : 4;
       a -= 0.25 * Math.sign(me.vf) + 0.0009 * me.vf * Math.abs(me.vf) * 2;
@@ -505,12 +564,14 @@
       // marcas de frenada
       if ((Math.abs(me.vr) > 2 || (brk && me.vf > 8)) && skids.length < 900) for (const s of [-0.75, 0.75]) skids.push([me.x - Math.cos(me.a) * 1.4 - Math.sin(me.a) * s, me.y - Math.sin(me.a) * 1.4 + Math.cos(me.a) * s]);
       // por la calle y el borde de la vereda (hasta SIDE metros pasado el cordón); en la vereda se va más lento
-      { const q = nearestRoad(me.x, me.y); if (q && q.d > 0 && Math.abs(me.vf) > 6) me.vf *= 1 - dt * 0.8; }
+      { const q = nearestRoad(me.x, me.y); if (q && q.d > 0 && !lotAt(me.x, me.y) && Math.abs(me.vf) > 6) me.vf *= 1 - dt * 0.8; }
       // se revisan las 4 puntas del auto: ninguna puede pasar el cordón
       let worst = 0, nx = 0, ny = 0;
       const cA = Math.cos(me.a), sA = Math.sin(me.a);
       for (const [fx, fy] of [[me.len / 2, me.wid / 2], [me.len / 2, -me.wid / 2], [-me.len / 2, me.wid / 2], [-me.len / 2, -me.wid / 2]]) {
-        const qx = me.x + cA * fx - sA * fy, qy = me.y + sA * fx + cA * fy, q = nearestRoad(qx, qy);
+        const qx = me.x + cA * fx - sA * fy, qy = me.y + sA * fx + cA * fy;
+        if (lotAt(qx, qy)) continue;
+        const q = nearestRoad(qx, qy);
         if (!q) { worst = 99; break; }
         if (q.d > worst) { worst = q.d; const dd = Math.hypot(qx - q.px, qy - q.py) || 0.001; nx = (qx - q.px) / dd; ny = (qy - q.py) / dd; }
       }
@@ -759,6 +820,22 @@
       ctx.imageSmoothingEnabled = true;
       for (let tx = Math.floor(vx0 / TILE); tx <= Math.floor(vx1 / TILE); tx++) for (let ty = Math.floor(vy0 / TILE); ty <= Math.floor(vy1 / TILE); ty++) ctx.drawImage(tile(tx, ty), tx * TILE, ty * TILE, TILE, TILE);
       ctx.fillStyle = 'rgba(20,20,20,.35)'; for (const [x, y] of skids) ctx.fillRect(x - 0.15, y - 0.15, 0.3, 0.3);
+      if (isRain()) {
+        // charcos con reflejo y gotitas que caen
+        for (const [px, py, pr, pa, q] of G.puddles) {
+          if (px < vx0 - 8 || px > vx1 + 8 || py < vy0 - 8 || py > vy1 + 8) continue;
+          ctx.save(); ctx.translate(px, py); ctx.rotate(pa);
+          ctx.fillStyle = isNight() ? 'rgba(30,45,65,.7)' : 'rgba(60,80,105,.62)'; ctx.beginPath(); ctx.ellipse(0, 0, pr, pr * 0.55, 0, 0, TAU); ctx.ellipse(pr * 0.5, pr * 0.15, pr * 0.6, pr * 0.4, 0.4, 0, TAU); ctx.fill();
+          ctx.fillStyle = 'rgba(200,220,240,.18)'; ctx.beginPath(); ctx.ellipse(-pr * 0.3, -pr * 0.15, pr * 0.45, pr * 0.12, 0, 0, TAU); ctx.fill();
+          const ph = (clock * 1.3 + q * 7) % 1; ctx.strokeStyle = `rgba(220,235,250,${0.5 * (1 - ph)})`; ctx.lineWidth = 0.06; ctx.beginPath(); ctx.ellipse((q - 0.15) * pr * 2, 0, 0.2 + ph * 0.9, (0.2 + ph * 0.9) * 0.6, 0, 0, TAU); ctx.stroke();
+          ctx.restore();
+          // si pasás por arriba rápido: salpica y patina un poco
+          if (Math.hypot(me.x - px, me.y - py) < pr && Math.abs(me.vf) > 6 && state === 'run') { if (splash.length < 120) for (let k2 = 0; k2 < 3; k2++) splash.push([me.x, me.y, (Math.random() - 0.5) * 8 - Math.cos(me.a) * 3, (Math.random() - 0.5) * 8 - Math.sin(me.a) * 3, 0.5]); me.vr += (Math.random() - 0.5) * 0.6; }
+        }
+        for (const sp2 of splash) { sp2[0] += sp2[2] * 0.016; sp2[1] += sp2[3] * 0.016; sp2[4] -= 0.016; }
+        splash = splash.filter(sp2 => sp2[4] > 0);
+        ctx.fillStyle = 'rgba(210,225,240,.6)'; for (const sp2 of splash) { ctx.beginPath(); ctx.arc(sp2[0], sp2[1], 0.12 + (0.5 - sp2[4]) * 0.3, 0, TAU); ctx.fill(); }
+      }
       if (job) { const p = 1 + Math.sin(clock * 5) * 0.15; ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(job.x, job.y, 12 * p, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,214,10,.18)'; ctx.fill(); }
       for (const c of cars) if (c.x > vx0 - 12 && c.x < vx1 + 12 && c.y > vy0 - 12 && c.y < vy1 + 12) drawCar(c);
       drawCar(me, true);
@@ -767,6 +844,8 @@
       if (!isNight() && lights !== 'off') { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const [x, y] = toScr(me.x + Math.cos(me.a) * me.len / 2, me.y + Math.sin(me.a) * me.len / 2), Lb = (lights === 'high' ? 40 : 24) * zoom; const gr = ctx.createRadialGradient(x, y, 0, x, y, Lb); gr.addColorStop(0, 'rgba(255,250,220,.13)'); gr.addColorStop(1, 'rgba(255,250,220,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, Lb, me.a - 0.4, me.a + 0.4); ctx.closePath(); ctx.fill(); ctx.restore(); }
       if (isNight()) drawNight();
       if (isRain()) drawRain();
+      // viñeta suave en los bordes
+      { const vg = ctx.createRadialGradient(W / 2, Hh / 2, Math.min(W, Hh) * 0.45, W / 2, Hh / 2, Math.max(W, Hh) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.28)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, Hh); }
       drawSigns();
       // flecha hacia la entrega
       if (job) {
@@ -809,7 +888,28 @@
         const na = -me.a - Math.PI / 2 - Math.PI / 2;
         ctx.save(); ctx.translate(cx + Math.cos(na) * (R - 1), cy + Math.sin(na) * (R - 1)); ctx.fillStyle = '#d6413a'; ctx.beginPath(); ctx.arc(0, 0, 9, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '800 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('N', 0, 0.5); ctx.restore();
         ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.strokeStyle = TH.rim; ctx.lineWidth = 2.5; ctx.stroke();
-        drawGauges();
+        if (dash === 'clasico') drawGauges();
+        else if (dash === 'radar') {
+          // nafta como anillo alrededor del radar y la velocidad abajo
+          const f = me.fuel, colF = f < 0.15 ? '#ff3b30' : f < 0.35 ? '#f5b52e' : '#30d158';
+          ctx.lineCap = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.arc(cx, cy, R + 8, Math.PI * 0.75, Math.PI * 2.25); ctx.stroke();
+          ctx.strokeStyle = colF; ctx.beginPath(); ctx.arc(cx, cy, R + 8, Math.PI * 0.75, Math.PI * 0.75 + Math.PI * 1.5 * Math.max(0.001, f)); ctx.stroke(); ctx.lineCap = 'butt';
+          ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.fillText('⛽', cx + Math.cos(Math.PI * 0.75) * (R + 8) - 4, cy + Math.sin(Math.PI * 0.75) * (R + 8) + 10);
+          const kmh = Math.round(Math.abs(me.vf) * 3.6), t = String(kmh);
+          const px2 = cx - R - 46, py2 = cy + R - 30;
+          ctx.fillStyle = 'rgba(16,20,28,.9)'; ctx.beginPath(); ctx.roundRect(px2 - 34, py2 - 22, 68, 44, 16); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.fillStyle = '#fff'; ctx.font = '800 22px system-ui'; ctx.fillText(t, px2, py2 - 4); ctx.font = '600 9px system-ui'; ctx.fillStyle = '#aab1c2'; ctx.fillText('km/h', px2, py2 + 14);
+          if (filling) { ctx.fillStyle = '#30d158'; ctx.font = '800 12px system-ui'; ctx.fillText('Cargando…', cx, cy - R - 44); }
+          ctx.font = '13px system-ui'; ctx.globalAlpha = lights === 'off' ? 0.35 : 1; ctx.fillText(lights === 'high' ? '💡💡' : '💡', cx - R - 4, cy - R + 4); ctx.globalAlpha = 1;
+        } else {
+          const kmh = Math.round(Math.abs(me.vf) * 3.6), f = me.fuel, bx = 20, by = Hh - 74;
+          ctx.fillStyle = 'rgba(16,20,28,.88)'; ctx.beginPath(); ctx.roundRect(bx, by, 132, 56, 14); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = '800 28px ui-monospace, Consolas, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.fillText(String(kmh).padStart(3, ' '), bx + 12, by + 33);
+          ctx.font = '600 10px system-ui'; ctx.fillStyle = '#aab1c2'; ctx.fillText('km/h', bx + 76, by + 31);
+          ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(bx + 12, by + 42, 108, 6); ctx.fillStyle = f < 0.15 ? '#ff3b30' : f < 0.35 ? '#f5b52e' : '#30d158'; ctx.fillRect(bx + 12, by + 42, 108 * f, 6);
+          ctx.font = '11px system-ui'; ctx.fillStyle = '#fff'; ctx.fillText(lights === 'off' ? '' : lights === 'high' ? '💡💡' : '💡', bx + 100, by + 20);
+          if (filling) { ctx.fillStyle = '#30d158'; ctx.font = '800 12px system-ui'; ctx.fillText('Cargando…', bx + 140, by + 47); }
+        }
         if (job) { const t = `📦 ${(Math.hypot(job.x - me.x, job.y - me.y) / 1000).toFixed(2)} km`; ctx.font = '700 12px system-ui'; const tw = ctx.measureText(t).width + 16; ctx.fillStyle = 'rgba(16,20,28,.86)'; ctx.beginPath(); ctx.roundRect(cx - tw / 2, cy - R - 30, tw, 22, 11); ctx.fill(); ctx.fillStyle = '#ffd60a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t, cx, cy - R - 19); }
       }
     }
@@ -871,7 +971,7 @@
       G = prepare(m); tiles.clear(); mapId = id; const s = H.get(); s.map = id; H.set(s);
       buildMini(); startCar(); autoLights(); cars = []; skids = []; stats = { red: 0, crash: 0, done: 0, pts: 0 }; job = null;
       for (let i = 0; i < 30; i++) spawnCar(false);
-      window.__barrio = { cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]) };
+      window.__barrioG = G; window.__barrio = { cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]) };
       msg.hidden = true; closeOver(root); state = 'run'; fit();
       H.status([m.name.split(',').slice(0, 2).join(','), `${G.lights.size} semáforos`]);
       if (mode === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras');
@@ -934,7 +1034,7 @@
       if ((e.key === 'p' || e.key === 'P') && state === 'pause') { msg.hidden = true; state = 'run'; return true; }
       if (state !== 'run') return false;
       if (e.key === 'r' || e.key === 'R') {
-        if (me.fuel <= 0.02 && G.stations.length) { const st = G.stations.slice().sort((a, b) => Math.hypot(a.rx - me.x, a.ry - me.y) - Math.hypot(b.rx - me.x, b.ry - me.y))[0]; me.x = st.rx; me.y = st.ry; me.a = st.ang; me.vf = me.vr = 0; me.fuel = 0.08; if (mode === 'entregas') stats.pts = Math.max(0, stats.pts - 30); say('🚛 La grúa te dejó en la estación (−30 pts). Quedate quieto para cargar'); return true; }
+        if (me.fuel <= 0.02 && G.stations.length) { const st = G.stations.slice().sort((a, b) => Math.hypot(a.rx - me.x, a.ry - me.y) - Math.hypot(b.rx - me.x, b.ry - me.y))[0]; const b0 = st.bays[0], bu = (b0.u0 + b0.u1) / 2, bv = (b0.v0 + b0.v1) / 2; me.x = st.ex + st.ux * bu + st.vx * bv; me.y = st.ey + st.uy * bu + st.vy * bv; me.a = st.ang; me.vf = me.vr = 0; me.fuel = 0.08; if (mode === 'entregas') stats.pts = Math.max(0, stats.pts - 30); say('🚛 La grúa te dejó en la estación (−30 pts). Quedate quieto para cargar'); return true; }
         resetToRoad(); say('Volviste a la calle'); return true;
       }
       if (e.key === 'q' || e.key === 'Q') { blink.l = !blink.l; blink.r = false; blink.a0 = me.a; return true; }
@@ -947,6 +1047,7 @@
     };
     const tools = [
       pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); }),
+      pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); }),
       pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); say(`Ahora manejás: ${V.n}`); } }),
       seg([['entregas', 'Entregas'], ['libre', 'Paseo libre']], mode, (v) => { mode = v; const s = H.get(); s.mode = v; H.set(s); job = null; if (state === 'run') { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); } }),
       btn('Cambiar zona', () => menu()),
