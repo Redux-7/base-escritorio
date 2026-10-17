@@ -43,10 +43,22 @@
       "c": "#3a6b8f",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#b9b3a6\"/><path d=\"M0 22h64M0 46h64M20 0v64M46 0v64\" stroke=\"#4b4e54\" stroke-width=\"9\"/><path d=\"M0 22h64M20 0v64\" stroke=\"#e0b43a\" stroke-width=\"0.8\" stroke-dasharray=\"3 3\"/><rect x=\"26\" y=\"26\" width=\"14\" height=\"14\" fill=\"#b0603c\"/><rect x=\"4\" y=\"4\" width=\"10\" height=\"12\" fill=\"#8e8e8a\"/><rect x=\"52\" y=\"52\" width=\"9\" height=\"9\" fill=\"#6f8f4e\"/><rect x=\"28\" y=\"19\" width=\"9\" height=\"5\" rx=\"1.2\" fill=\"#d3202a\"/><rect x=\"43\" y=\"30\" width=\"5\" height=\"9\" rx=\"1.2\" fill=\"#f2f2f2\"/><circle cx=\"16\" cy=\"18\" r=\"2\" fill=\"#30d158\"/></svg>",
       "tipo": "Manejo",
-      "v": "1",
+      "v": "2",
       "file": "barrio.js",
-      "size": 43401,
-      "sha256": "9978eb209398448f2dd6054eaf29024fb29afd9c3b7f6549ed8d573a3126a6ee"
+      "size": 43420,
+      "sha256": "a957a9dda6d2758e912fed4a74ad48fbe3e6837833cceeee5281fa6c5bffd83e"
+    },
+    {
+      "id": "futbol",
+      "n": "Fútbol 5",
+      "d": "Partido de fútbol 5 contra la compu: pases, gambetas, remates y paredes.",
+      "c": "#2a7f3d",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2a7f3d\"/><rect x=\"0\" y=\"0\" width=\"16\" height=\"64\" fill=\"#2f8a43\"/><rect x=\"32\" y=\"0\" width=\"16\" height=\"64\" fill=\"#2f8a43\"/><rect x=\"5\" y=\"9\" width=\"54\" height=\"46\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><path d=\"M32 9v46\" stroke=\"#fff\" stroke-width=\"1.6\"/><circle cx=\"32\" cy=\"32\" r=\"7\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><circle cx=\"22\" cy=\"26\" r=\"3.4\" fill=\"#6cb4ee\" stroke=\"#fff\"/><circle cx=\"42\" cy=\"38\" r=\"3.4\" fill=\"#d62828\" stroke=\"#fff\"/><circle cx=\"31\" cy=\"31\" r=\"2\" fill=\"#fff\" stroke=\"#222\" stroke-width=\".8\"/></svg>",
+      "tipo": "Deportes",
+      "v": "1",
+      "file": "futbol.js",
+      "size": 21752,
+      "sha256": "b485347b252ca7af5ff3a143d88f372a9b541c528ae3b07a2a52503c87957361"
     }
   ]
 }

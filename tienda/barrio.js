@@ -117,7 +117,7 @@
     const root = h('div', { class: 'mg-move br-root' });
     const cv = h('canvas', { class: 'mv-cv' }); root.append(cv);
     const hud = h('div', { class: 'mv-hud' }), msg = h('div', { class: 'sn-msg' }), toastEl = h('div', { class: 'br-toast' });
-    root.append(hud, msg, toastEl);
+    root.append(hud, msg, toastEl); msg.hidden = true;
     const ctx = cv.getContext('2d');
     let W = 800, Hh = 500, lastSz = '', rf = 0;
     const fit = () => { W = Math.max(320, root.clientWidth); Hh = Math.max(240, root.clientHeight); const d = Math.min(2, devicePixelRatio || 1); cv.width = W * d; cv.height = Hh * d; cv.style.width = W + 'px'; cv.style.height = Hh + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); DPR = d; };
