@@ -10,6 +10,17 @@
   const SPEED = [24, 14, 15, 13.5, 12, 9, 6, 5, 4]; // velocidad de la compu por tipo de calle (m/s)
   const CAR_COLS = ['#d8dadf', '#2b2f36', '#8d939c', '#b3201c', '#1f4f9a', '#f2f2f2', '#6b6f75', '#9a7b4f', '#245a3a', '#e3b23c', '#5a2a6a', '#c7cbd1'];
   const SKIN = { rojo: '#d3202a', azul: '#1f5fe0', amarillo: '#f2c21b', verde: '#1e9e4a', negro: '#23262d', blanco: '#f2f2f2', naranja: '#ff7a1a' };
+  // vehículos que podés manejar: largo, ancho, aceleración, velocidad máxima (m/s), distancia entre ejes, agarre, volante
+  const VEH = {
+    auto: { n: 'Auto', t: 'auto', len: 4.4, wid: 1.9, acc: 4.6, vmax: 36, wb: 2.6, grip: 9.5, steer: 0.62 },
+    deportivo: { n: 'Deportivo', t: 'sport', len: 4.5, wid: 1.95, acc: 7, vmax: 50, wb: 2.6, grip: 11.5, steer: 0.6 },
+    camioneta: { n: 'Camioneta', t: 'pickup', len: 5.3, wid: 2.0, acc: 3.9, vmax: 33, wb: 3.2, grip: 8.5, steer: 0.56 },
+    moto: { n: 'Moto', t: 'moto', len: 2.1, wid: 0.8, acc: 6.5, vmax: 40, wb: 1.4, grip: 10.5, steer: 0.72 },
+    taxi: { n: 'Taxi', t: 'taxi', len: 4.4, wid: 1.85, acc: 4.4, vmax: 34, wb: 2.6, grip: 9.5, steer: 0.62 },
+    patrullero: { n: 'Patrullero', t: 'police', len: 4.7, wid: 1.9, acc: 5.4, vmax: 42, wb: 2.7, grip: 10, steer: 0.62 },
+    colectivo: { n: 'Colectivo', t: 'bus', len: 11.5, wid: 2.55, acc: 2.2, vmax: 23, wb: 6, grip: 7, steer: 0.6 },
+    camion: { n: 'Camión', t: 'truck', len: 9, wid: 2.5, acc: 2.1, vmax: 25, wb: 5, grip: 7, steer: 0.56 }
+  };
   // hash para que lo "al azar" del mapa salga siempre igual
   const hsh = (a, b) => { let x = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263); x = Math.imul(x ^ (x >>> 13), 1274126177); return ((x ^ (x >>> 16)) >>> 0) / 4294967296; };
 
@@ -107,7 +118,17 @@
       G.signs.push({ x: sx, y: sy, dx, dy, names: list.map(o => o.n) });
     }
     // faroles en las esquinas (se ven de noche)
-    G.lamps = corners.map(n => { const [x, y] = nodePos(n); let mw = 0; for (const [ri] of links.get(n)) mw = Math.max(mw, roads[ri].w); return [x + mw / 2 + 1.5, y - mw / 2 - 1.5]; });
+    G.lampsCorner = corners.map(n => { const [x, y] = nodePos(n); let mw = 0; for (const [ri] of links.get(n)) mw = Math.max(mw, roads[ri].w); return [x + mw / 2 + 1.5, y - mw / 2 - 1.5]; });
+    // faroles a lo largo de las calles (uno cada ~32 m, alternando veredas) + los de las esquinas
+    G.lamps = G.lampsCorner.slice();
+    roads.forEach((r, ri) => {
+      if (r.k > 6) return;
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 25) continue;
+        const ux = (bx - ax) / L, uy = (by - ay) / L;
+        for (let t = 16, k = 0; t < L - 10; t += 32, k++) { const sd = (k + ri) % 2 ? 1 : -1, off = r.w / 2 + 1.2; G.lamps.push([ax + ux * t - uy * off * sd, ay + uy * t + ux * off * sd]); }
+      }
+    });
     // árboles en las veredas
     G.trees = [];
     roads.forEach((r, ri) => {
@@ -142,10 +163,12 @@
 
     let G = null, mapId = H.get().map || null, mode = H.get().mode === 'libre' ? 'libre' : 'entregas';
     let me, cars = [], keys = {}, raf = 0, lastT = 0, state = 'menu', clock = 0, skids = [], toastT = 0;
+    const SIDE = 2.2;
     const WX = { dia: 'Día', noche: 'Noche', lluvia: 'Lluvia', noche_lluvia: 'Noche con lluvia' };
     let wx = WX[H.get().wx] ? H.get().wx : 'dia';
     const isNight = () => wx === 'noche' || wx === 'noche_lluvia', isRain = () => wx === 'lluvia' || wx === 'noche_lluvia';
     let drops = [], dark = null, blink = { l: false, r: false, haz: false, a0: 0 }, headOn = false;
+    let veh = VEH[H.get().veh] ? H.get().veh : 'auto', siren = false;
     let stats = { red: 0, crash: 0, done: 0, pts: 0 }, job = null, zoom = 5, camX = 0, camY = 0, mini = null;
 
     // ---------- mosaicos del mapa (se dibujan una vez y se reusan) ----------
@@ -279,8 +302,10 @@
         const dir = r.o === 1 ? 1 : r.o === -1 ? -1 : (Math.random() < 0.5 ? 1 : -1);
         const from = dir === 1 ? i : i + 1;
         if (from + dir < 0 || from + dir >= r.p.length) continue;
-        const bus = r.k <= 3 && Math.random() < 0.12;
-        const c = { ri, i: from, dir, t: Math.random(), v: SPEED[r.k] * 0.6, c: bus ? '#e8e2d0' : CAR_COLS[Math.floor(Math.random() * CAR_COLS.length)], len: bus ? 11 : 4.3, wid: bus ? 2.5 : 1.85, bus, lane: r.o ? (Math.random() < 0.5 ? -1 : 1) : 1, x, y, a: 0, brake: false, stuck: 0 };
+        const q = Math.random(), bus = r.k <= 3 && q < 0.12;
+        const ty = bus ? 'bus' : q < 0.22 ? 'taxi' : q < 0.3 ? 'moto' : q < 0.37 ? 'pickup' : q < 0.41 && r.k <= 5 ? 'truck' : 'auto';
+        const dims = { bus: [11.5, 2.55], taxi: [4.4, 1.85], moto: [2.1, 0.8], pickup: [5.3, 2], truck: [9, 2.5], auto: [4.3, 1.85] }[ty];
+        const c = { ri, i: from, dir, t: Math.random(), v: SPEED[r.k] * 0.6, type: ty, c: bus ? '#e8e2d0' : ty === 'taxi' ? '#1b1b1d' : ty === 'truck' ? ['#d9d9d9', '#2f5d8a', '#b3201c'][Math.floor(Math.random() * 3)] : CAR_COLS[Math.floor(Math.random() * CAR_COLS.length)], len: dims[0], wid: dims[1], bus, lane: r.o ? (Math.random() < 0.5 ? -1 : 1) : 1, x, y, a: 0, brake: false, stuck: 0 };
         placeCar(c); if (cars.some(o => Math.hypot(o.x - c.x, o.y - c.y) < 9)) continue;
         cars.push(c); return;
       }
@@ -378,7 +403,7 @@
       G.roads.forEach((r, ri) => { if (r.k > 6) return; r.p.forEach(([x, y], i) => { const d = x * x + y * y; if (d < bd && i < r.p.length - 1) { bd = d; best = [ri, i]; } }); });
       const r = G.roads[best[0]], A = r.p[best[1]], B = r.p[best[1] + 1], a = Math.atan2(B[1] - A[1], B[0] - A[0]);
       const off = r.o ? 0 : Math.min(r.w / 4, 3.2);
-      me = { x: (A[0] + B[0]) / 2 - Math.sin(a) * off, y: (A[1] + B[1]) / 2 + Math.cos(a) * off, a, vf: 0, vr: 0, steer: 0, len: 4.4, wid: 1.9, c: SKIN[H.get().skin] || '#d3202a', inLight: null };
+      me = { x: (A[0] + B[0]) / 2 - Math.sin(a) * off, y: (A[1] + B[1]) / 2 + Math.cos(a) * off, a, vf: 0, vr: 0, steer: 0, len: VEH[veh].len, wid: VEH[veh].wid, type: VEH[veh].t, V: VEH[veh], c: SKIN[H.get().skin] || '#d3202a', inLight: null };
       camX = me.x; camY = me.y;
     }
     function resetToRoad() {
@@ -388,20 +413,20 @@
     }
     function carStep(dt) {
       const thr = keys.up ? 1 : 0, brk = keys.down ? 1 : 0, hb = keys.hb;
-      const maxS = 0.62 / (1 + Math.abs(me.vf) / 8);
+      const V = me.V, maxS = V.steer / (1 + Math.abs(me.vf) / 8);
       const target = ((keys.left ? -1 : 0) + (keys.right ? 1 : 0)) * maxS;
       me.steer += (target - me.steer) * Math.min(1, dt * 7);
       const wet = isRain() ? 0.68 : 1;
       let a = 0;
-      if (thr) a += me.vf < -0.3 ? 9 : 4.6 * Math.max(0, 1 - me.vf / 36);
+      if (thr) a += me.vf < -0.3 ? 9 : V.acc * Math.max(0, 1 - me.vf / V.vmax);
       if (brk) a += me.vf > 0.3 ? -9.5 * wet : -3 * (me.vf > -6 ? 1 : 0);
       if (hb) a += me.vf > 0 ? -4 : 4;
       a -= 0.25 * Math.sign(me.vf) + 0.0009 * me.vf * Math.abs(me.vf) * 2;
       if (!thr && !brk && Math.abs(me.vf) < 0.25) me.vf = 0;
       me.vf += a * dt;
       // giro según volante y velocidad, con límite de agarre
-      let omega = me.vf / 2.6 * Math.tan(me.steer);
-      const grip = (hb ? 4.5 : 9.5) * wet;
+      let omega = me.vf / V.wb * Math.tan(me.steer);
+      const grip = (hb ? 4.5 : V.grip) * wet;
       if (Math.abs(omega * me.vf) > grip) { const ex = Math.abs(omega * me.vf) - grip; omega = Math.sign(omega) * grip / Math.max(0.1, Math.abs(me.vf)); me.vr -= Math.sign(omega * me.vf) * ex * dt * 0.6; }
       if (hb && Math.abs(me.vf) > 4) omega *= 1.35;
       me.a += omega * dt;
@@ -411,7 +436,8 @@
       me.y += (Math.sin(me.a) * me.vf + Math.cos(me.a) * me.vr) * dt;
       // marcas de frenada
       if ((Math.abs(me.vr) > 2 || (brk && me.vf > 8)) && skids.length < 900) for (const s of [-0.75, 0.75]) skids.push([me.x - Math.cos(me.a) * 1.4 - Math.sin(me.a) * s, me.y - Math.sin(me.a) * 1.4 + Math.cos(me.a) * s]);
-      // solo por la calle: el cordón frena el auto
+      // por la calle y el borde de la vereda (hasta SIDE metros pasado el cordón); en la vereda se va más lento
+      { const q = nearestRoad(me.x, me.y); if (q && q.d > 0 && Math.abs(me.vf) > 6) me.vf *= 1 - dt * 0.8; }
       // se revisan las 4 puntas del auto: ninguna puede pasar el cordón
       let worst = 0, nx = 0, ny = 0;
       const cA = Math.cos(me.a), sA = Math.sin(me.a);
@@ -421,8 +447,8 @@
         if (q.d > worst) { worst = q.d; const dd = Math.hypot(qx - q.px, qy - q.py) || 0.001; nx = (qx - q.px) / dd; ny = (qy - q.py) / dd; }
       }
       if (worst === 99) { me.x = px; me.y = py; me.vf *= -0.2; me.vr = 0; }
-      else if (worst > 0) {
-        me.x -= nx * (worst + 0.02); me.y -= ny * (worst + 0.02);
+      else if (worst > SIDE) {
+        me.x -= nx * (worst - SIDE + 0.02); me.y -= ny * (worst - SIDE + 0.02);
         const ca2 = Math.cos(me.a), sa2 = Math.sin(me.a);
         let vx = ca2 * me.vf - sa2 * me.vr, vy = sa2 * me.vf + ca2 * me.vr;
         const vn = vx * nx + vy * ny;
@@ -438,7 +464,7 @@
       }
       // choques con autos
       for (const c of cars) {
-        const dx = c.x - me.x, dy = c.y - me.y, d = Math.hypot(dx, dy), minD = (c.bus ? 4.2 : 2.9);
+        const dx = c.x - me.x, dy = c.y - me.y, d = Math.hypot(dx, dy), minD = 1 + (c.len + me.len) / 5;
         if (d < minD && d > 0) {
           const push = (minD - d), ux = dx / d, uy = dy / d;
           me.x -= ux * push; me.y -= uy * push;
@@ -499,12 +525,35 @@
       ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
       const L = c.len, Wd = c.wid;
       ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.roundRect(-L / 2 + 0.4, -Wd / 2 + 0.4, L, Wd, 0.6); ctx.fill();
-      ctx.fillStyle = c.c; ctx.beginPath(); ctx.roundRect(-L / 2, -Wd / 2, L, Wd, c.bus ? 0.4 : 0.7); ctx.fill();
-      if (c.bus) { ctx.fillStyle = 'rgba(30,40,55,.55)'; ctx.fillRect(-L / 2 + 0.6, -Wd / 2 + 0.25, L - 1.2, 0.35); ctx.fillRect(-L / 2 + 0.6, Wd / 2 - 0.6, L - 1.2, 0.35); ctx.fillStyle = '#2f6b4f'; ctx.fillRect(-L / 2 + 0.5, -0.5, L - 1, 1); }
-      else {
-        ctx.fillStyle = 'rgba(25,35,50,.85)'; ctx.beginPath(); ctx.roundRect(L * 0.08, -Wd / 2 + 0.2, L * 0.2, Wd - 0.4, 0.3); ctx.fill();
+      const T = c.type || (c.bus ? 'bus' : 'auto');
+      const glass = 'rgba(25,35,50,.85)';
+      if (T === 'moto') {
+        ctx.fillStyle = '#222'; ctx.beginPath(); ctx.roundRect(-L / 2, -0.18, L, 0.36, 0.18); ctx.fill();
+        ctx.fillStyle = c.c; ctx.beginPath(); ctx.roundRect(-L * 0.25, -Wd / 2 + 0.1, L * 0.55, Wd - 0.2, 0.25); ctx.fill();
+        ctx.strokeStyle = '#999'; ctx.lineWidth = 0.08; ctx.beginPath(); ctx.moveTo(L * 0.3, -0.42); ctx.lineTo(L * 0.3, 0.42); ctx.stroke();
+        ctx.fillStyle = mine ? '#f5c518' : '#e6e6e6'; ctx.beginPath(); ctx.arc(-L * 0.05, 0, 0.3, 0, TAU); ctx.fill();
+      } else if (T === 'bus') {
+        ctx.fillStyle = c.c === '#e8e2d0' ? '#e8e2d0' : c.c; ctx.beginPath(); ctx.roundRect(-L / 2, -Wd / 2, L, Wd, 0.4); ctx.fill();
+        ctx.fillStyle = 'rgba(30,40,55,.55)'; ctx.fillRect(-L / 2 + 0.6, -Wd / 2 + 0.25, L - 1.2, 0.35); ctx.fillRect(-L / 2 + 0.6, Wd / 2 - 0.6, L - 1.2, 0.35);
+        ctx.fillStyle = '#2f6b4f'; ctx.fillRect(-L / 2 + 0.5, -0.5, L - 1, 1); ctx.fillStyle = '#cfd3d6'; ctx.fillRect(-L * 0.1, -0.7, 1.6, 1.4);
+      } else if (T === 'truck') {
+        ctx.fillStyle = '#e9e9e6'; ctx.beginPath(); ctx.roundRect(-L / 2, -Wd / 2, L * 0.72, Wd, 0.2); ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,.15)'; ctx.lineWidth = 0.1; for (let k = 1; k < 6; k++) { ctx.beginPath(); ctx.moveTo(-L / 2 + k * L * 0.12, -Wd / 2); ctx.lineTo(-L / 2 + k * L * 0.12, Wd / 2); ctx.stroke(); }
+        ctx.fillStyle = c.c; ctx.beginPath(); ctx.roundRect(L * 0.24, -Wd / 2, L * 0.26, Wd, 0.4); ctx.fill();
+        ctx.fillStyle = glass; ctx.fillRect(L * 0.4, -Wd / 2 + 0.2, L * 0.06, Wd - 0.4);
+      } else if (T === 'pickup') {
+        ctx.fillStyle = c.c; ctx.beginPath(); ctx.roundRect(-L / 2, -Wd / 2, L, Wd, 0.6); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(-L / 2 + 0.25, -Wd / 2 + 0.25, L * 0.4, Wd - 0.5);
+        ctx.fillStyle = glass; ctx.beginPath(); ctx.roundRect(L * 0.1, -Wd / 2 + 0.2, L * 0.17, Wd - 0.4, 0.3); ctx.fill(); ctx.fillRect(-L * 0.06, -Wd / 2 + 0.25, L * 0.06, Wd - 0.5);
+      } else {
+        ctx.fillStyle = T === 'police' ? '#f2f2f2' : c.c; ctx.beginPath(); ctx.roundRect(-L / 2, -Wd / 2, L, Wd, T === 'sport' ? 0.9 : 0.7); ctx.fill();
+        if (T === 'police') { ctx.fillStyle = '#1f3f9a'; ctx.fillRect(-L / 2 + 0.3, -Wd / 2, L - 0.6, 0.35); ctx.fillRect(-L / 2 + 0.3, Wd / 2 - 0.35, L - 0.6, 0.35); }
+        if (T === 'taxi') { ctx.fillStyle = '#f2c21b'; ctx.fillRect(-L * 0.22, -Wd / 2 + 0.2, L * 0.3, Wd - 0.4); }
+        if (T === 'sport') { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(-L / 2, -0.35, L, 0.2); ctx.fillRect(-L / 2, 0.15, L, 0.2); }
+        ctx.fillStyle = glass; ctx.beginPath(); ctx.roundRect(L * 0.08, -Wd / 2 + 0.2, L * (T === 'sport' ? 0.24 : 0.2), Wd - 0.4, 0.3); ctx.fill();
         ctx.beginPath(); ctx.roundRect(-L * 0.36, -Wd / 2 + 0.25, L * 0.13, Wd - 0.5, 0.25); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(-L * 0.2, -Wd / 2 + 0.25, L * 0.27, Wd - 0.5);
+        if (T !== 'taxi') { ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(-L * 0.2, -Wd / 2 + 0.25, L * 0.27, Wd - 0.5); }
+        if (T === 'police') { const f = (clock * 3) % 1 < 0.5 && (mine ? siren : true); ctx.fillStyle = f ? '#ff2a2a' : '#5a1010'; ctx.fillRect(-L * 0.08, -Wd / 2 + 0.25, 0.4, (Wd - 0.5) / 2); ctx.fillStyle = !f && (mine ? siren : true) ? '#2a6bff' : '#10205a'; ctx.fillRect(-L * 0.08, 0, 0.4, (Wd - 0.5) / 2); }
       }
       ctx.fillStyle = '#fff6c8'; ctx.fillRect(L / 2 - 0.25, -Wd / 2 + 0.2, 0.25, 0.45); ctx.fillRect(L / 2 - 0.25, Wd / 2 - 0.65, 0.25, 0.45);
       const brake = mine ? keys.down && me.vf > 0.5 : c.brake;
@@ -559,7 +608,7 @@
       if (dark.width !== cv.width || dark.height !== cv.height) { dark.width = cv.width; dark.height = cv.height; }
       const g = dark.getContext('2d'), d = DPR;
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over';
-      g.fillStyle = isRain() ? 'rgba(6,9,18,.78)' : 'rgba(8,11,24,.72)'; g.fillRect(0, 0, dark.width, dark.height);
+      g.fillStyle = isRain() ? 'rgba(10,14,26,.62)' : 'rgba(12,16,34,.55)'; g.fillRect(0, 0, dark.width, dark.height);
       g.setTransform(d, 0, 0, d, 0, 0); g.globalCompositeOperation = 'destination-out';
       const glow = (x, y, r, a) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
       const beam = (c, len, a) => {
@@ -567,14 +616,22 @@
         const gr = g.createRadialGradient(x, y, 0, x, y, L); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
         g.fillStyle = gr; g.beginPath(); g.moveTo(x, y); g.arc(x, y, L, c.a - 0.42, c.a + 0.42); g.closePath(); g.fill();
       };
-      for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x > -200 && y > -200 && x < W + 200 && y < Hh + 200) glow(x, y, 24 * zoom, 0.85); }
+      for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x > -200 && y > -200 && x < W + 200 && y < Hh + 200) glow(x, y, 15 * zoom, 0.75); }
       for (const c of cars) { const [x, y] = toScr(c.x, c.y); if (x > -300 && y > -300 && x < W + 300 && y < Hh + 300) beam(c, 22, 0.75); }
       beam(me, headOn ? 46 : 34, 0.95);
       { const [x, y] = toScr(me.x, me.y); glow(x, y, 7 * zoom, 0.5); }
       for (const L of G.lights.values()) { const [x, y] = toScr(L.x, L.y); if (x > -100 && y > -100 && x < W + 100 && y < Hh + 100) glow(x, y, (L.maxW / 2 + 6) * zoom, 0.35); }
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(dark, 0, 0); ctx.restore();
-      // brillos que se suman: faroles, luces traseras y semáforos
+      // brillos que se suman: ventanas encendidas, faroles, luces traseras y semáforos
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const vw = G.inRect(camX - W / 2 / zoom, camY - Hh / 2 / zoom, camX + W / 2 / zoom, camY + Hh / 2 / zoom);
+      for (const bd of vw.buildings) {
+        if (bd.c > 0.55) continue;
+        const [x0, y0] = toScr(bd.bb[0], bd.bb[1]), [x1, y1] = toScr(bd.bb[2], bd.bb[3]), w = x1 - x0, hgt = y1 - y0;
+        if (w < 8 || hgt < 8) continue;
+        const n = 1 + Math.floor(bd.c * 6);
+        for (let k = 0; k < n; k++) { const fx = x0 + w * (0.2 + ((bd.c * 97 + k * 0.37) % 0.6)), fy = y0 + hgt * (0.2 + ((bd.c * 53 + k * 0.29) % 0.6)); ctx.fillStyle = 'rgba(255,196,110,.45)'; ctx.fillRect(fx, fy, Math.max(3, zoom * 1.1), Math.max(2, zoom * 0.7)); }
+      }
       for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x < -40 || y < -40 || x > W + 40 || y > Hh + 40) continue; const gr = ctx.createRadialGradient(x, y, 0, x, y, 3 * zoom); gr.addColorStop(0, 'rgba(255,214,140,.55)'); gr.addColorStop(1, 'rgba(255,214,140,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, 3 * zoom, 0, TAU); ctx.fill(); }
       for (const c of [...cars, me]) {
         const bx = c.x - Math.cos(c.a) * c.len / 2, by = c.y - Math.sin(c.a) * c.len / 2, [x, y] = toScr(bx, by); if (x < -40 || y < -40 || x > W + 40 || y > Hh + 40) continue;
@@ -743,12 +800,14 @@
       if (e.key === 'q' || e.key === 'Q') { blink.l = !blink.l; blink.r = false; blink.a0 = me.a; return true; }
       if (e.key === 'e' || e.key === 'E') { blink.r = !blink.r; blink.l = false; blink.a0 = me.a; return true; }
       if (e.key === 'b' || e.key === 'B') { blink.haz = !blink.haz; say(blink.haz ? 'Balizas prendidas' : 'Balizas apagadas'); return true; }
+      if ((e.key === 'n' || e.key === 'N') && me.type === 'police') { siren = !siren; say(siren ? '🚨 Sirena prendida' : 'Sirena apagada'); return true; }
       if (e.key === 'l' || e.key === 'L') { headOn = !headOn; say(headOn ? 'Luces altas' : 'Luces bajas'); return true; }
       if (e.key === 'p' || e.key === 'P') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; keys = {}; return true; }
       const k = KEYS[e.key]; if (!k) return false; keys[k] = true; return true;
     };
     const tools = [
       pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); }),
+      pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); say(`Ahora manejás: ${V.n}`); } }),
       seg([['entregas', 'Entregas'], ['libre', 'Paseo libre']], mode, (v) => { mode = v; const s = H.get(); s.mode = v; H.set(s); job = null; if (state === 'run') { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); } }),
       btn('Cambiar zona', () => menu()),
       btn('Volver a la calle', () => { if (state === 'run') resetToRoad(); })
@@ -761,7 +820,7 @@
     return {
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = SKIN[id] || me.c; },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · R volvés a la calle · P pausa. Con lluvia frena y dobla peor.',
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · R volvés a la calle · P pausa. Podés ir por el borde de la vereda, más despacio. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };
