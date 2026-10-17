@@ -1,7 +1,7 @@
 {
-  "version": "2.26.0",
-  "file": "versiones/base-app-2.26.0.zip",
-  "sha256": "b2d102a02b1ade450ed3d0f040914b58f310dea58ffdc1c611e3f97118311045",
-  "size": 483697,
-  "notes": "Novedades 2.26\n- Duelo aéreo: Primera Guerra con bandos, lugares, humo y el triplano del Barón Rojo. Trucos.\n- Los colores para pintar carpetas en el explorador ahora se ven."
+  "version": "2.27.0",
+  "file": "versiones/base-app-2.27.0.zip",
+  "sha256": "5f16447fb5963f5cd5594d652e6ee87ca789a83988582583e7e801040b7aa0fd",
+  "size": 487558,
+  "notes": "Novedades 2.27\n- Juego nuevo en la Tienda: Manejá por tu barrio. Tus calles reales con semáforos, tránsito y entregas."
 }
