@@ -1,7 +1,7 @@
 {
-  "version": "2.18.3",
-  "file": "versiones/base-app-2.18.3.zip",
-  "sha256": "6f75f9758949ff96c1876d3df1275834b26e4c93d2469f783322f3aef950e2e1",
-  "size": 427052,
-  "notes": "Novedades 2.18.3\n- Arreglo: ya no aparece el aviso \"ResizeObserver loop…\" al jugar.\n- 5 mini juegos nuevos: Memotest, Viborita, Ta-te-ti, Adiviná la palabra y Bloques.\n- Mahjong con fichas más nítidas.\n- Explorador: las fotos no se salen de su lugar.\n- \"Escritorio de Windows\" en el Inicio de Base.\n- Tablet: la cabecera ya no se encima.\n- Arreglo: la actualización automática ahora vuelve a abrir Base."
+  "version": "2.19.0",
+  "file": "versiones/base-app-2.19.0.zip",
+  "sha256": "d74bff02004866fe17a70d30bee98a666a48395d62b0484484fb6233a9d509d0",
+  "size": 440439,
+  "notes": "Novedades 2.19\n- Mini juegos nuevos: Carreras y Vuelo.\n- Tablet: fondos, esquinas, transparencia, nombre y color por bloque, un diseño por tablero, reloj grande, nota, temporizador, escenas de luz y modo reposo.\n- Si Base se traba, se recupera sola."
 }
