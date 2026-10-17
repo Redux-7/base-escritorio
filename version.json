@@ -1,7 +1,7 @@
 {
-  "version": "2.19.0",
-  "file": "versiones/base-app-2.19.0.zip",
-  "sha256": "d74bff02004866fe17a70d30bee98a666a48395d62b0484484fb6233a9d509d0",
-  "size": 440439,
-  "notes": "Novedades 2.19\n- Mini juegos nuevos: Carreras y Vuelo.\n- Tablet: fondos, esquinas, transparencia, nombre y color por bloque, un diseño por tablero, reloj grande, nota, temporizador, escenas de luz y modo reposo.\n- Si Base se traba, se recupera sola."
+  "version": "2.20.0",
+  "file": "versiones/base-app-2.20.0.zip",
+  "sha256": "8d9064ec8a6e6e1f1c77938c33721356bf0313fd436a5da1b53ae5d853f9b49b",
+  "size": 442539,
+  "notes": "Novedades 2.20\n- Tienda de mini juegos (Sala de juegos > Tienda): Rally, Duelo aéreo y Ping pong.\n- Mini juegos nuevos: Carreras y Vuelo.\n- Tablet: fondos, esquinas, nombre y color por bloque, un diseño por tablero, reloj, nota, temporizador, escenas y reposo.\n- Si Base se traba, se recupera sola."
 }
