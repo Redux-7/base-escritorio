@@ -99,12 +99,12 @@
       for (const [ri, i] of links.get(n)) { const r = roads[ri]; if (!r.n || r.k >= 7 || seen.has(r.n)) continue; const j = i < r.p.length - 1 ? i + 1 : i - 1; const [x0, y0] = r.p[i], [x1, y1] = r.p[j]; seen.set(r.n, { n: r.n, ang: Math.atan2(y1 - y0, x1 - x0), w: r.w }); }
       if (seen.size < 1) continue;
       const [x, y] = nodePos(n), list = [...seen.values()].slice(0, 2);
-      let mw = 0; for (const [ri] of links.get(n)) mw = Math.max(mw, roads[ri].w);
-      // va en la vereda, en diagonal a la esquina
-      const a1 = list[0].ang, a2 = list[1] ? list[1].ang : a1 + Math.PI / 2;
-      let dx = Math.cos(a1) + Math.cos(a2), dy = Math.sin(a1) + Math.sin(a2), L = Math.hypot(dx, dy) || 1;
-      const off = mw / 2 + 2.6;
-      G.signs.push({ x: x + dx / L * off * 1.25, y: y + dy / L * off * 1.25, names: list.map(o => o.n) });
+      // en la vereda de una esquina: corrido del cordón de las dos calles
+      const A = list[0], Bq = list[1] || { ang: A.ang + Math.PI / 2, w: A.w };
+      const u1x = Math.cos(A.ang), u1y = Math.sin(A.ang), u2x = Math.cos(Bq.ang), u2y = Math.sin(Bq.ang);
+      let sx = x + u1x * (Bq.w / 2 + 2.4) + u2x * (A.w / 2 + 2.4), sy = y + u1y * (Bq.w / 2 + 2.4) + u2y * (A.w / 2 + 2.4);
+      let dx = u1x + u2x, dy = u1y + u2y; const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+      G.signs.push({ x: sx, y: sy, dx, dy, names: list.map(o => o.n) });
     }
     // faroles en las esquinas (se ven de noche)
     G.lamps = corners.map(n => { const [x, y] = nodePos(n); let mw = 0; for (const [ri] of links.get(n)) mw = Math.max(mw, roads[ri].w); return [x + mw / 2 + 1.5, y - mw / 2 - 1.5]; });
@@ -236,7 +236,7 @@
       }
     }
     function buildMini() {
-      const [a, b, c, d] = G.bounds, s = 220 / Math.max(c - a, d - b);
+      const [a, b, c, d] = G.bounds, s = 140 / Math.max(c - a, d - b);
       const m2 = document.createElement('canvas'); m2.width = Math.ceil((c - a) * s) + 8; m2.height = Math.ceil((d - b) * s) + 8;
       const g = m2.getContext('2d'); g.fillStyle = 'rgba(20,22,26,.9)'; g.fillRect(0, 0, m2.width, m2.height);
       g.translate(4, 4); g.scale(s, s); g.translate(-a, -b); g.lineCap = g.lineJoin = 'round';
@@ -537,13 +537,20 @@
     function drawSigns() {
       ctx.save(); ctx.font = '700 11px system-ui, Segoe UI, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
       for (const s2 of G.signs) {
-        const [sx, sy] = toScr(s2.x, s2.y); if (sx < -80 || sy < -40 || sx > W + 20 || sy > Hh + 20) continue;
+        if (s2.ok === undefined) {
+          // si por la forma de la esquina quedó sobre el asfalto, se corre hacia adentro de la manzana
+          let k = 0; while (k < 12) { const q = nearestRoad(s2.x, s2.y); if (!q || q.d > 0.8) break; s2.x += s2.dx; s2.y += s2.dy; k++; }
+          s2.ok = true;
+        }
+        const [sx, sy] = toScr(s2.x, s2.y); if (sx < -200 || sy < -80 || sx > W + 200 || sy > Hh + 80) continue;
         const lines = s2.names.map(n => n.length > 22 ? n.slice(0, 21) + '…' : n), w = Math.max(...lines.map(t => ctx.measureText(t).width)) + 12, hh = lines.length * 15 + 5;
-        ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(sx - 1 + 2, sy - hh - 6 + 2, w, hh);
-        ctx.fillStyle = '#d9d9d9'; ctx.fillRect(sx - 1, sy - 6, 2, 6);
-        ctx.fillStyle = '#183a5c'; ctx.fillRect(sx - 1, sy - hh - 6, w, hh);
-        ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1; ctx.strokeRect(sx + 1.5, sy - hh - 3.5, w - 5, hh - 5);
-        ctx.fillStyle = '#fff'; lines.forEach((t, i) => ctx.fillText(t, sx + 5, sy - hh - 6 + 10 + i * 15));
+        // el cartel crece hacia adentro de la vereda (lejos de las calles)
+        const bx = s2.dx >= 0 ? sx + 3 : sx - 3 - w, by = s2.dy >= 0 ? sy + 3 : sy - 3 - hh;
+        ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(bx + 2, by + 2, w, hh);
+        ctx.fillStyle = '#183a5c'; ctx.fillRect(bx, by, w, hh);
+        ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1; ctx.strokeRect(bx + 2.5, by + 2.5, w - 5, hh - 5);
+        ctx.fillStyle = '#fff'; lines.forEach((t, i) => ctx.fillText(t, bx + 6, by + 10 + i * 15));
+        ctx.fillStyle = '#cfd3d8'; ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, TAU); ctx.fill(); ctx.strokeStyle = '#555'; ctx.stroke();
       }
       ctx.restore();
     }

@@ -1,7 +1,7 @@
 {
-  "version": "2.28.0",
-  "file": "versiones/base-app-2.28.0.zip",
-  "sha256": "5d300fa3d96fd5c6e10c099274d22bf1f2291f1589f93aa9a03fa450c7af3d93",
-  "size": 488500,
-  "notes": "Novedades 2.28\n- Joystick (Xbox) en la Sala de juegos.\n- Manejá por tu barrio: carteles en las esquinas, guiños, balizas, modo noche y lluvia, y no se sube a la vereda."
+  "version": "2.29.0",
+  "file": "versiones/base-app-2.29.0.zip",
+  "sha256": "66884445c63d03781c9957e4944e56ed946b45977ee4357d82945c1d59193265",
+  "size": 489583,
+  "notes": "Novedades 2.29\n- Botón Controles en los mini juegos (teclado y joystick).\n- Manejá por tu barrio: carteles en la vereda y mapita más chico."
 }
