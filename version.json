@@ -1,7 +1,7 @@
 {
-  "version": "2.21.0",
-  "file": "versiones/base-app-2.21.0.zip",
-  "sha256": "2df49fb9334e5f8700fdffcebca8bbd30575b6e23d437f4838758afb9617d7ca",
-  "size": 448485,
-  "notes": "Novedades 2.21\n- Cada mini juego tiene su estilo: mazos, fichas, temas, autos y aviones.\n- Tablet: botón de Ajustes, la captura ahora sí saca foto de la compu y cerrar ventanas responde al instante.\n- Arreglo: con la barra de tareas escondida, las ventanas minimizadas ya no quedan como barritas abajo."
+  "version": "2.22.0",
+  "file": "versiones/base-app-2.22.0.zip",
+  "sha256": "5d56aa41dcf67d21d678ab8b56169b8db6b0862ccd251db9fcfb4c2ebe28f9af",
+  "size": 451697,
+  "notes": "Novedades 2.22\n- Todos los Ajustes de Base también desde la tablet.\n- El botón de ajustes ahora es un engranaje con la palabra \"Ajustes\".\n- Tablet: botones chicos al lado del clima y se recarga sola cuando Base se actualiza."
 }
