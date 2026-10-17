@@ -1,7 +1,7 @@
 {
-  "version": "2.22.0",
-  "file": "versiones/base-app-2.22.0.zip",
-  "sha256": "5d56aa41dcf67d21d678ab8b56169b8db6b0862ccd251db9fcfb4c2ebe28f9af",
-  "size": 451697,
-  "notes": "Novedades 2.22\n- Todos los Ajustes de Base también desde la tablet.\n- El botón de ajustes ahora es un engranaje con la palabra \"Ajustes\".\n- Tablet: botones chicos al lado del clima y se recarga sola cuando Base se actualiza."
+  "version": "2.23.0",
+  "file": "versiones/base-app-2.23.0.zip",
+  "sha256": "7fd8f6316100d7694a00b9f6584a03caa97f6f86ad9809821ca0974d4ea7d365",
+  "size": 472384,
+  "notes": "Novedades 2.23\n- Barra de ventanas: agrupa por programa, vista previa al pasar el mouse y programas fijados.\n- Botón de Wi-Fi: Wi-Fi, Bluetooth, brillo y batería.\n- Recortes con Ctrl + Alt + S e historial del portapapeles.\n- El buscador encuentra archivos de toda la compu.\n- Archivos del escritorio de Windows en Base.\n- Modo descanso para la tele (Ajustes > Reloj).\n- Copia automática cada semana.\n- Tablet: los ajustes con dibujos se ven con imágenes."
 }
