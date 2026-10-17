@@ -996,7 +996,7 @@
         }
         card.append(h('small', { class: 'br-sub', text: 'Tus zonas guardadas' }), ul);
       }
-      const inp = h('input', { class: 'br-in', type: 'text', placeholder: 'Calle y altura, barrio o ciudad (ej.: Belgrano 100, Morón)' });
+      const inp = h('input', { class: 'br-in', type: 'text', placeholder: 'Calle y altura, barrio o ciudad (ej.: Av. Corrientes 1500, CABA)' });
       let rad = 5000;
       const radSeg = seg([['1500', '1,5 km'], ['3000', '3 km'], ['5000', '5 km']], '5000', (v) => { rad = +v; });
       const go = h('button', { class: 'mg-btn primary', type: 'button', text: 'Buscar' });
@@ -1007,7 +1007,7 @@
         const r = await host.map.search(q).catch((e) => ({ ok: false, error: e.message }));
         res.replaceChildren();
         if (!r.ok) { res.append(h('small', { class: 'br-err', text: r.error || 'No pude buscar' })); return; }
-        if (!r.list.length) { res.append(h('small', { text: 'No encontré esa dirección. Probá con la ciudad (ej.: "Belgrano 100, Morón").' })); return; }
+        if (!r.list.length) { res.append(h('small', { text: 'No encontré esa dirección. Probá con la ciudad (ej.: "Av. Corrientes 1500, CABA").' })); return; }
         for (const x of r.list) {
           const b = h('button', { class: 'br-res', type: 'button', text: x.name });
           b.onclick = async () => {
