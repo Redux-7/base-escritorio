@@ -1,7 +1,7 @@
 {
-  "version": "2.29.0",
-  "file": "versiones/base-app-2.29.0.zip",
-  "sha256": "66884445c63d03781c9957e4944e56ed946b45977ee4357d82945c1d59193265",
-  "size": 489583,
-  "notes": "Novedades 2.29\n- Botón Controles en los mini juegos (teclado y joystick).\n- Manejá por tu barrio: carteles en la vereda y mapita más chico."
+  "version": "2.30.0",
+  "file": "versiones/base-app-2.30.0.zip",
+  "sha256": "6ab5a7d1a5065da65d03d6ae3901a634c2386703ca395e9de25c874b1bab05c7",
+  "size": 489675,
+  "notes": "Novedades 2.30\n- Manejá por tu barrio: vehículos más reales, mejores gráficos, velocímetro, nafta y estaciones de servicio, luces apagadas/bajas/altas y radar según el clima."
 }
