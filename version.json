@@ -1,7 +1,7 @@
 {
-  "version": "2.24.0",
-  "file": "versiones/base-app-2.24.0.zip",
-  "sha256": "03e30a1908e2641cb2f5359eb7b73a8b7c66c4cf19a64c1d8f296d181d00c905",
-  "size": 474920,
-  "notes": "Novedades 2.24\n- Un botón junta los de Windows arriba a la derecha.\n- La barra de ventanas ya no salta.\n- Las carpetas del Inicio flotan encima de todo.\n- Temas nuevos en Buscaminas y Sudoku, dibujos nuevos en Mahjong.\n- Rally más lento con 4 vehículos; Duelo aéreo con aviones de la Primera Guerra."
+  "version": "2.25.0",
+  "file": "versiones/base-app-2.25.0.zip",
+  "sha256": "e3036a7766457e8b673647b6f7dc4082bedcd80800b9f0b1c2ce073992b4375d",
+  "size": 483562,
+  "notes": "Novedades 2.25\n- Piano y sintetizador en Mini juegos: 9 sonidos, efectos, acordes, grabar y metrónomo.\n- El botón de Inicio de Windows queda siempre a la vista."
 }
