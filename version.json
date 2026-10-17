@@ -1,7 +1,7 @@
 {
-  "version": "2.20.0",
-  "file": "versiones/base-app-2.20.0.zip",
-  "sha256": "8d9064ec8a6e6e1f1c77938c33721356bf0313fd436a5da1b53ae5d853f9b49b",
-  "size": 442539,
-  "notes": "Novedades 2.20\n- Tienda de mini juegos (Sala de juegos > Tienda): Rally, Duelo aéreo y Ping pong.\n- Mini juegos nuevos: Carreras y Vuelo.\n- Tablet: fondos, esquinas, nombre y color por bloque, un diseño por tablero, reloj, nota, temporizador, escenas y reposo.\n- Si Base se traba, se recupera sola."
+  "version": "2.21.0",
+  "file": "versiones/base-app-2.21.0.zip",
+  "sha256": "2df49fb9334e5f8700fdffcebca8bbd30575b6e23d437f4838758afb9617d7ca",
+  "size": 448485,
+  "notes": "Novedades 2.21\n- Cada mini juego tiene su estilo: mazos, fichas, temas, autos y aviones.\n- Tablet: botón de Ajustes, la captura ahora sí saca foto de la compu y cerrar ventanas responde al instante.\n- Arreglo: con la barra de tareas escondida, las ventanas minimizadas ya no quedan como barritas abajo."
 }

@@ -10,6 +10,7 @@
   const angDiff = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
   const LV = { facil: { n: 'Fácil', aim: 0.45, turn: 2.0, fire: 1.6 }, normal: { n: 'Normal', aim: 0.25, turn: 2.4, fire: 1.15 }, as: { n: 'As del aire', aim: 0.12, turn: 2.8, fire: 0.8 } };
 
+  const SKIN = { rojo: '#e8202a', amarillo: '#f5c518', blanco: '#eceff3', negro: '#2b2f37', camuflado: '#5b6b3a', naranja: '#ff7a1a' };
   function dogfight(H) {
     let lv = H.get().lv || 'normal';
     const root = h('div', { class: 'mg-move' });
@@ -26,7 +27,7 @@
     function plane(x, y, a, c, foe) { return { x, y, a, v: foe ? 230 : 250, c, hp: foe ? 3 : 10, max: foe ? 3 : 10, cd: 0, foe, hit: 0, think: Math.random() }; }
     function newGame() {
       closeOver(root);
-      me = plane(WORLD / 2, WORLD / 2, -Math.PI / 2, '#e8202a', false);
+      me = plane(WORLD / 2, WORLD / 2, -Math.PI / 2, SKIN[H.get().skin] || '#e8202a', false);
       foes = []; shots = []; fx = []; pickups = []; wave = 0; score = 0; keys = {};
       clouds = []; for (let i = 0; i < 40; i++) clouds.push({ x: Math.random() * WORLD, y: Math.random() * WORLD, r: 60 + Math.random() * 120, hi: Math.random() < 0.4 });
       nextWave(); state = 'run'; msg.hidden = true; status(); start();
@@ -151,10 +152,11 @@
     addEventListener('pointerup', () => { keys.fire = keys.left = keys.right = false; });
     const tools = [seg(Object.entries(LV).map(([k, v]) => [k, v.n]), lv, (v) => { lv = v; const s = H.get(); s.lv = v; H.set(s); newGame(); }), btn('Nueva', newGame)];
     requestAnimationFrame(() => { fit(); newGame(); });
-    return { el: root, tools, key, help: '← → girás, ↑ acelerás, ↓ frenás, espacio dispara. Derribá cada oleada; los botiquines verdes te curan. P pausa.', hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; }, show: () => { if (state === 'pause') { /* sigue en pausa hasta que toques P */ } } };
+    return { el: root, tools, key, setSkin: (id) => { if (me) me.c = SKIN[id] || me.c; draw(); }, help: '← → girás, ↑ acelerás, ↓ frenás, espacio dispara. Derribá cada oleada; los botiquines verdes te curan. P pausa.', hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; }, show: () => { if (state === 'pause') { /* sigue en pausa hasta que toques P */ } } };
   }
 
-  BM.register({ id: 'dogfight', n: 'Duelo aéreo', d: 'Combate de aviones: derribá las oleadas enemigas.', c: '#2a6aa8', create: dogfight,
+  BM.register({ id: 'dogfight', n: 'Duelo aéreo', d: 'Combate de aviones: derribá las oleadas enemigas.', c: '#2a6aa8', create: dogfight, skinLabel: 'Avión',
+    skins: [['rojo', 'Rojo', '#e8202a'], ['amarillo', 'Amarillo', '#f5c518'], ['blanco', 'Blanco', '#eceff3'], ['negro', 'Negro', '#2b2f37'], ['camuflado', 'Camuflado', '#5b6b3a'], ['naranja', 'Naranja', '#ff7a1a']],
     art: '<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#3d86c6"/><circle cx="46" cy="44" r="12" fill="rgba(255,255,255,.35)"/><g transform="rotate(-35 22 30)"><path d="M34 30l-6-2-3-8h-3l1 8-6 1-2-3h-2l1 4-1 4h2l2-3 6 1-1 8h3l3-8z" fill="#e8202a"/></g><g transform="rotate(150 46 22)"><path d="M58 22l-6-2-3-8h-3l1 8-6 1-2-3h-2l1 4-1 4h2l2-3 6 1-1 8h3l3-8z" fill="#2f6fed"/></g><path d="M30 24l8-5" stroke="#fffbcc" stroke-width="2.5" stroke-linecap="round"/><circle cx="41" cy="18" r="3" fill="#ffb347"/></svg>',
     best: (s) => { const b = Math.max(s.best_facil || 0, s.best_normal || 0, s.best_as || 0); return b ? `Mejor: ${b} puntos` : 'Nunca jugaste'; } });
 })();

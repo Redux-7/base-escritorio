@@ -24,6 +24,7 @@
     return out;
   }
 
+  const SKIN = { rojo: '#e8202a', azul: '#2f6fed', amarillo: '#f5b52e', verde: '#27ae60', violeta: '#8e44ad', negro: '#23262d', blanco: '#f2f2f2' };
   function rally(H) {
     let trackId = H.get().track || 'costanera';
     const LAPS = 3;
@@ -54,7 +55,8 @@
       const N = path.length;
       const [sx, sy] = path[0], [nx, ny] = path[3];
       const ang = Math.atan2(ny - sy, nx - sx);
-      const colors = ['#e8202a', '#2f6fed', '#f5b52e', '#27ae60'];
+      const mine = SKIN[H.get().skin] || '#e8202a';
+      const colors = [mine, ...['#e8202a', '#2f6fed', '#f5b52e', '#27ae60', '#8e44ad'].filter(c => c !== mine).slice(0, 3)];
       cars = colors.map((c, i) => {
         const row = Math.floor(i / 2), side = i % 2 ? 1 : -1;
         const bx = sx - Math.cos(ang) * (60 + row * 70), by = sy - Math.sin(ang) * (60 + row * 70);
@@ -182,10 +184,11 @@
     };
     const tools = [seg(Object.entries(TRACKS).map(([k, v]) => [k, v.n]), trackId, (v) => { trackId = v; const s = H.get(); s.track = v; H.set(s); newGame(); }), btn('Nueva', newGame)];
     requestAnimationFrame(() => { fit(); newGame(); });
-    return { el: root, tools, key, help: 'Carrera de 3 vueltas contra la compu. Flechas: ↑ acelera, ↓ frena, ← → doblás. Fuera de la pista vas más lento. P pausa.', hide: () => { if (state === 'race') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; } };
+    return { el: root, tools, key, setSkin: (id) => { if (me) me.c = SKIN[id] || me.c; draw(); }, help: 'Carrera de 3 vueltas contra la compu. Flechas: ↑ acelera, ↓ frena, ← → doblás. Fuera de la pista vas más lento. P pausa.', hide: () => { if (state === 'race') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; } };
   }
 
-  BM.register({ id: 'rally', n: 'Rally', d: 'Carreras vistas desde arriba: 3 vueltas contra la compu.', c: '#d35400', create: rally,
+  BM.register({ id: 'rally', n: 'Rally', d: 'Carreras vistas desde arriba: 3 vueltas contra la compu.', c: '#d35400', create: rally, skinLabel: 'Auto',
+    skins: [['rojo', 'Rojo', '#e8202a'], ['azul', 'Azul', '#2f6fed'], ['amarillo', 'Amarillo', '#f5b52e'], ['verde', 'Verde', '#27ae60'], ['violeta', 'Violeta', '#8e44ad'], ['negro', 'Negro', '#23262d'], ['blanco', 'Blanco', '#f2f2f2']],
     art: '<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#4f9a3f"/><path d="M14 50c-8-10-6-30 8-36s30-2 32 12-10 14-16 18-16 16-24 6z" fill="none" stroke="#5a5d63" stroke-width="9" stroke-linejoin="round"/><path d="M14 50c-8-10-6-30 8-36s30-2 32 12-10 14-16 18-16 16-24 6z" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="3 3"/><g transform="rotate(-30 22 18)"><rect x="15" y="14" width="14" height="8" rx="2" fill="#e8202a"/><rect x="22" y="15" width="3" height="6" fill="#1d2633"/></g><g transform="rotate(60 50 34)"><rect x="43" y="30" width="14" height="8" rx="2" fill="#2f6fed"/></g></svg>',
     best: (s) => s.wins ? `${s.wins} carreras ganadas` : (s.games ? 'Todavía sin ganar' : 'Nunca jugaste') });
 })();

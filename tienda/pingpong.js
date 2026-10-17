@@ -47,7 +47,7 @@
     }
     function draw() {
       if (!ball) return;
-      ctx.fillStyle = '#1f6f5c'; ctx.fillRect(0, 0, W, Hh);
+      ctx.fillStyle = ({ verde: '#1f6f5c', azul: '#1d4f91', rojo: '#8e2430', noche: '#14171f' })[H.get().skin] || '#1f6f5c'; ctx.fillRect(0, 0, W, Hh);
       ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 4; ctx.strokeRect(12, 12, W - 24, Hh - 24);
       ctx.setLineDash([12, 14]); ctx.beginPath(); ctx.moveTo(W / 2, 12); ctx.lineTo(W / 2, Hh - 12); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.font = `900 ${Hh * 0.22}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -66,9 +66,10 @@
     cv.addEventListener('pointermove', (e) => { const r = cv.getBoundingClientRect(); mouseY = (e.clientY - r.top) / r.height; });
     const tools = [seg(Object.entries(LV).map(([k, v]) => [k, v.n]), lv, (v) => { lv = v; const s = H.get(); s.lv = v; H.set(s); newGame(); }), btn('Nueva', newGame)];
     requestAnimationFrame(() => { fit(); newGame(); });
-    return { el: root, tools, key, help: 'Mové tu paleta (la roja) con el mouse o con ↑ ↓. Gana el primero que llega a 7.', hide: () => { if (state === 'run') { state = 'pause'; cancelAnimationFrame(raf); } }, show: () => { if (state === 'pause') { state = 'run'; start(); } } };
+    return { el: root, tools, key, setSkin: () => draw(), help: 'Mové tu paleta (la roja) con el mouse o con ↑ ↓. Gana el primero que llega a 7.', hide: () => { if (state === 'run') { state = 'pause'; cancelAnimationFrame(raf); } }, show: () => { if (state === 'pause') { state = 'run'; start(); } } };
   }
-  BM.register({ id: 'pingpong', n: 'Ping pong', d: 'El clásico de paletas contra la compu, a 7 puntos.', c: '#1f6f5c', create: pingpong,
+  BM.register({ id: 'pingpong', n: 'Ping pong', d: 'El clásico de paletas contra la compu, a 7 puntos.', c: '#1f6f5c', create: pingpong, skinLabel: 'Mesa',
+    skins: [['verde', 'Verde', '#1f6f5c'], ['azul', 'Azul', '#1d4f91'], ['rojo', 'Roja', '#8e2430'], ['noche', 'Noche', '#14171f']],
     art: '<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#1f6f5c"/><rect x="6" y="6" width="52" height="52" fill="none" stroke="#fff" stroke-width="2"/><path d="M32 6v52" stroke="#fff" stroke-width="2" stroke-dasharray="4 4"/><rect x="10" y="20" width="5" height="16" fill="#e8202a"/><rect x="49" y="28" width="5" height="16" fill="#2f6fed"/><circle cx="36" cy="26" r="3.5" fill="#fff"/></svg>',
     best: (s) => s.games ? `${s.wins || 0} ganadas de ${s.games}` : 'Nunca jugaste' });
 })();
