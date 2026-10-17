@@ -126,7 +126,7 @@
       for (let i = 0; i < r.p.length - 1; i++) {
         const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 25) continue;
         const ux = (bx - ax) / L, uy = (by - ay) / L;
-        for (let t = 16, k = 0; t < L - 10; t += 32, k++) { const sd = (k + ri) % 2 ? 1 : -1, off = r.w / 2 + 1.2; G.lamps.push([ax + ux * t - uy * off * sd, ay + uy * t + ux * off * sd]); }
+        for (let t = 12, k = 0; t < L - 8; t += 26, k++) { const off = r.w / 2 + 1.2; for (const sd of r.k <= 3 ? [-1, 1] : [(k + ri) % 2 ? 1 : -1]) G.lamps.push([ax + ux * t - uy * off * sd, ay + uy * t + ux * off * sd]); }
       }
     });
     // árboles en las veredas
@@ -608,7 +608,7 @@
       if (dark.width !== cv.width || dark.height !== cv.height) { dark.width = cv.width; dark.height = cv.height; }
       const g = dark.getContext('2d'), d = DPR;
       g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-over';
-      g.fillStyle = isRain() ? 'rgba(10,14,26,.62)' : 'rgba(12,16,34,.55)'; g.fillRect(0, 0, dark.width, dark.height);
+      g.fillStyle = isRain() ? 'rgba(10,14,26,.6)' : 'rgba(12,16,34,.52)'; g.fillRect(0, 0, dark.width, dark.height);
       g.setTransform(d, 0, 0, d, 0, 0); g.globalCompositeOperation = 'destination-out';
       const glow = (x, y, r, a) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); };
       const beam = (c, len, a) => {
@@ -616,22 +616,14 @@
         const gr = g.createRadialGradient(x, y, 0, x, y, L); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
         g.fillStyle = gr; g.beginPath(); g.moveTo(x, y); g.arc(x, y, L, c.a - 0.42, c.a + 0.42); g.closePath(); g.fill();
       };
-      for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x > -200 && y > -200 && x < W + 200 && y < Hh + 200) glow(x, y, 15 * zoom, 0.75); }
+      for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x > -200 && y > -200 && x < W + 200 && y < Hh + 200) glow(x, y, 19 * zoom, 0.8); }
       for (const c of cars) { const [x, y] = toScr(c.x, c.y); if (x > -300 && y > -300 && x < W + 300 && y < Hh + 300) beam(c, 22, 0.75); }
       beam(me, headOn ? 46 : 34, 0.95);
       { const [x, y] = toScr(me.x, me.y); glow(x, y, 7 * zoom, 0.5); }
       for (const L of G.lights.values()) { const [x, y] = toScr(L.x, L.y); if (x > -100 && y > -100 && x < W + 100 && y < Hh + 100) glow(x, y, (L.maxW / 2 + 6) * zoom, 0.35); }
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(dark, 0, 0); ctx.restore();
-      // brillos que se suman: ventanas encendidas, faroles, luces traseras y semáforos
+      // brillos que se suman: alumbrado público, luces traseras y semáforos
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      const vw = G.inRect(camX - W / 2 / zoom, camY - Hh / 2 / zoom, camX + W / 2 / zoom, camY + Hh / 2 / zoom);
-      for (const bd of vw.buildings) {
-        if (bd.c > 0.55) continue;
-        const [x0, y0] = toScr(bd.bb[0], bd.bb[1]), [x1, y1] = toScr(bd.bb[2], bd.bb[3]), w = x1 - x0, hgt = y1 - y0;
-        if (w < 8 || hgt < 8) continue;
-        const n = 1 + Math.floor(bd.c * 6);
-        for (let k = 0; k < n; k++) { const fx = x0 + w * (0.2 + ((bd.c * 97 + k * 0.37) % 0.6)), fy = y0 + hgt * (0.2 + ((bd.c * 53 + k * 0.29) % 0.6)); ctx.fillStyle = 'rgba(255,196,110,.45)'; ctx.fillRect(fx, fy, Math.max(3, zoom * 1.1), Math.max(2, zoom * 0.7)); }
-      }
       for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x < -40 || y < -40 || x > W + 40 || y > Hh + 40) continue; const gr = ctx.createRadialGradient(x, y, 0, x, y, 3 * zoom); gr.addColorStop(0, 'rgba(255,214,140,.55)'); gr.addColorStop(1, 'rgba(255,214,140,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, 3 * zoom, 0, TAU); ctx.fill(); }
       for (const c of [...cars, me]) {
         const bx = c.x - Math.cos(c.a) * c.len / 2, by = c.y - Math.sin(c.a) * c.len / 2, [x, y] = toScr(bx, by); if (x < -40 || y < -40 || x > W + 40 || y > Hh + 40) continue;
