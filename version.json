@@ -1,7 +1,7 @@
 {
-  "version": "2.25.0",
-  "file": "versiones/base-app-2.25.0.zip",
-  "sha256": "e3036a7766457e8b673647b6f7dc4082bedcd80800b9f0b1c2ce073992b4375d",
-  "size": 483562,
-  "notes": "Novedades 2.25\n- Piano y sintetizador en Mini juegos: 9 sonidos, efectos, acordes, grabar y metrónomo.\n- El botón de Inicio de Windows queda siempre a la vista."
+  "version": "2.26.0",
+  "file": "versiones/base-app-2.26.0.zip",
+  "sha256": "b2d102a02b1ade450ed3d0f040914b58f310dea58ffdc1c611e3f97118311045",
+  "size": 483697,
+  "notes": "Novedades 2.26\n- Duelo aéreo: Primera Guerra con bandos, lugares, humo y el triplano del Barón Rojo. Trucos.\n- Los colores para pintar carpetas en el explorador ahora se ven."
 }
