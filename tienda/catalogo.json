@@ -43,10 +43,10 @@
       "c": "#3a6b8f",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#b9b3a6\"/><path d=\"M0 22h64M0 46h64M20 0v64M46 0v64\" stroke=\"#4b4e54\" stroke-width=\"9\"/><path d=\"M0 22h64M20 0v64\" stroke=\"#e0b43a\" stroke-width=\"0.8\" stroke-dasharray=\"3 3\"/><rect x=\"26\" y=\"26\" width=\"14\" height=\"14\" fill=\"#b0603c\"/><rect x=\"4\" y=\"4\" width=\"10\" height=\"12\" fill=\"#8e8e8a\"/><rect x=\"52\" y=\"52\" width=\"9\" height=\"9\" fill=\"#6f8f4e\"/><rect x=\"28\" y=\"19\" width=\"9\" height=\"5\" rx=\"1.2\" fill=\"#d3202a\"/><rect x=\"43\" y=\"30\" width=\"5\" height=\"9\" rx=\"1.2\" fill=\"#f2f2f2\"/><circle cx=\"16\" cy=\"18\" r=\"2\" fill=\"#30d158\"/></svg>",
       "tipo": "Manejo",
-      "v": "4",
+      "v": "5",
       "file": "barrio.js",
-      "size": 53692,
-      "sha256": "8d51e23a35598f6e95e88b55adf77003d575a5cde7a5dc98e1b8f74ba97eebba"
+      "size": 56211,
+      "sha256": "7e2106c2d7b26cb42f0680841e81bf869ef87a7640966289f19c235c717318bd"
     },
     {
       "id": "futbol",

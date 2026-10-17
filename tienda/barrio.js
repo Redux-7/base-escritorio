@@ -621,13 +621,34 @@
           ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-10, -11); ctx.lineTo(-5, 0); ctx.lineTo(-10, 11); ctx.closePath(); ctx.fill(); ctx.restore();
         }
       }
-      // mapita
-      if (mini) {
-        const mx = W - mini.c.width - 14, my = Hh - mini.c.height - 14;
-        ctx.drawImage(mini.c, mx, my);
-        const P = (x, y) => [mx + 4 + (x - mini.a) * mini.s, my + 4 + (y - mini.b) * mini.s];
-        if (job) { const [x, y] = P(job.x, job.y); ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.arc(x, y, 4, 0, TAU); ctx.fill(); }
-        const [x, y] = P(me.x, me.y); ctx.save(); ctx.translate(x, y); ctx.rotate(me.a); ctx.fillStyle = '#ff3b30'; ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(-4, -4); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill(); ctx.restore();
+      // radar redondo estilo GPS: gira con el auto (siempre para adelante es arriba)
+      if (G) {
+        const R = 74, cx = W - R - 18, cy = Hh - R - 18, RANGE = 260, k = R / RANGE;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fillStyle = 'rgba(16,20,28,.86)'; ctx.fill();
+        ctx.clip();
+        ctx.translate(cx, cy); ctx.rotate(-me.a - Math.PI / 2); ctx.scale(k, k); ctx.translate(-me.x, -me.y);
+        const near = G.inRect(me.x - RANGE, me.y - RANGE, me.x + RANGE, me.y + RANGE);
+        for (const pk of G.parks) { if (pk.bb[2] < me.x - RANGE || pk.bb[0] > me.x + RANGE || pk.bb[3] < me.y - RANGE || pk.bb[1] > me.y + RANGE) continue; ctx.beginPath(); pk.p.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.fillStyle = 'rgba(80,140,80,.45)'; ctx.fill(); }
+        ctx.lineCap = ctx.lineJoin = 'round';
+        for (const pass of [0, 1]) for (const r of near.roads) {
+          const big = r.k <= 3; if ((pass === 1) !== big) continue;
+          ctx.beginPath(); r.p.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+          ctx.strokeStyle = big ? '#e8c15a' : 'rgba(200,206,214,.75)'; ctx.lineWidth = (big ? 4.5 : 2.6) / k; ctx.stroke();
+        }
+        if (job) { ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.arc(job.x, job.y, 6 / k, 0, TAU); ctx.fill(); }
+        ctx.restore();
+        // destino fuera del radar: flechita en el borde
+        if (job) {
+          const dx = job.x - me.x, dy = job.y - me.y, d = Math.hypot(dx, dy);
+          if (d > RANGE * 0.92) { const a2 = Math.atan2(dy, dx) - me.a - Math.PI / 2; ctx.save(); ctx.translate(cx + Math.cos(a2) * (R - 9), cy + Math.sin(a2) * (R - 9)); ctx.rotate(a2); ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(-5, -6); ctx.lineTo(-5, 6); ctx.closePath(); ctx.fill(); ctx.restore(); }
+        }
+        // tu auto en el centro, y la N que marca el norte
+        ctx.save(); ctx.translate(cx, cy); ctx.fillStyle = '#ff3b30'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(6.5, 7); ctx.lineTo(0, 3.5); ctx.lineTo(-6.5, 7); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+        const na = -me.a - Math.PI / 2 - Math.PI / 2;
+        ctx.save(); ctx.translate(cx + Math.cos(na) * (R - 1), cy + Math.sin(na) * (R - 1)); ctx.fillStyle = '#d6413a'; ctx.beginPath(); ctx.arc(0, 0, 9, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '800 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('N', 0, 0.5); ctx.restore();
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2.5; ctx.stroke();
+        if (job) { const t = `📦 ${(Math.hypot(job.x - me.x, job.y - me.y) / 1000).toFixed(2)} km`; ctx.font = '700 12px system-ui'; const tw = ctx.measureText(t).width + 16; ctx.fillStyle = 'rgba(16,20,28,.86)'; ctx.beginPath(); ctx.roundRect(cx - tw / 2, cy - R - 30, tw, 22, 11); ctx.fill(); ctx.fillStyle = '#ffd60a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t, cx, cy - R - 19); }
       }
     }
     function hudPaint() {
