@@ -1107,7 +1107,7 @@
         }
       }
       // choques con autos estacionados (rectángulo contra rectángulo)
-      for (const c of G.parkedNear(me.x, me.y, 9)) {
+      if (!race) for (const c of G.parkedNear(me.x, me.y, 9)) {
         if (Math.abs(c.x - me.x) > 8 || Math.abs(c.y - me.y) > 8) continue;
         const inRect = (o, x, y, m) => { const [lx, ly] = toLocal(o, x, y); return Math.abs(lx) < o.len / 2 - m && Math.abs(ly) < o.wid / 2 - m; };
         const cornersOf = (o) => { const cc = Math.cos(o.a), ss = Math.sin(o.a); return [[1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]].map(([a2, b2]) => [o.x + cc * a2 * o.len / 2 - ss * b2 * o.wid / 2, o.y + ss * a2 * o.len / 2 + cc * b2 * o.wid / 2]); };
@@ -1563,7 +1563,7 @@
         ctx.fillStyle = 'rgba(210,225,240,.6)'; for (const sp2 of splash) { ctx.beginPath(); ctx.arc(sp2[0], sp2[1], 0.12 + (0.5 - sp2[4]) * 0.3, 0, TAU); ctx.fill(); }
       }
       if (job) { const p = 1 + Math.sin(clock * 5) * 0.15; ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(job.x, job.y, 12 * p, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,214,10,.18)'; ctx.fill(); }
-      { const pr = Math.max(vx1 - vx0, vy1 - vy0) / 2 + 8; for (const c of G.parkedNear((vx0 + vx1) / 2, (vy0 + vy1) / 2, pr)) if (c.x > vx0 - 8 && c.x < vx1 + 8 && c.y > vy0 - 8 && c.y < vy1 + 8) drawCar(c); }
+      if (!race) { const pr = Math.max(vx1 - vx0, vy1 - vy0) / 2 + 8; for (const c of G.parkedNear((vx0 + vx1) / 2, (vy0 + vy1) / 2, pr)) if (c.x > vx0 - 8 && c.x < vx1 + 8 && c.y > vy0 - 8 && c.y < vy1 + 8) drawCar(c); }
       for (const c of cars) if (c.x > vx0 - 12 && c.x < vx1 + 12 && c.y > vy0 - 12 && c.y < vy1 + 12) drawCar(c);
       if (!race) findMyLight(); else myLight = null;
       if (race) drawRaceTrack();
@@ -1881,6 +1881,12 @@
 .brr-len{font-weight:700;color:#ffd60a}
 .brr-tr{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center}
 .brr-tr .mg-btn{text-align:left}
+.brr-menu{position:absolute;inset:0;z-index:45;margin:auto;width:min(1020px,calc(100% - 24px));height:fit-content;max-height:calc(100% - 24px);overflow:auto;background:rgba(14,18,26,.96);border-radius:20px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;color:#fff;box-shadow:0 30px 80px -20px #000;font-size:13px;backdrop-filter:blur(10px)}
+.brr-mh{display:flex;flex-direction:column;gap:2px}.brr-mh b{font-size:20px}.brr-mh small{color:#aab1c2}
+.brr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;align-items:start}
+.brr-sec{display:flex;flex-direction:column;gap:9px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.brr-sec h4{margin:0;font-size:13px;letter-spacing:.04em;color:#e8ecf3}
+.brr-sec .mg-seg{align-self:flex-start}
 .brr-opts{left:auto;right:12px;width:270px}.brr-l{display:grid;gap:4px}.brr-l small{font-weight:700;color:#aab1c2}.brr-l .mg-pick{width:100%}
 .brr-res{border-collapse:collapse;width:100%;font-size:14px}.brr-res td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.08)}.brr-res tr.me td{color:#ffd60a;font-weight:800}
 `;
@@ -2191,6 +2197,9 @@
     const key = (e) => {
       SND.init();
       if (picking) { if (e.key === 'Escape') endPick(false); return true; }
+      if ((e.key === 'm' || e.key === 'M') && (state === 'run' || state === 'menu-pause')) { toggleOpts(); return true; }
+      if (e.key === 'Escape' && state === 'menu-pause') { toggleOpts(false); return true; }
+      if (state === 'menu-pause') return true;
       if ((e.key === 'h' || e.key === 'H') && state === 'run') { SND.horn(true); return true; }
       if (e.key === 'f' || e.key === 'F') { toggleFull(); return true; }
       if (e.key === '+' || e.key === '=') { setZoom(zoomMul * 1.15); return true; }
@@ -2226,35 +2235,69 @@
     trafIn.oninput = () => { traffic = +trafIn.value; trafLbl.textContent = trafTxt(traffic); };
     trafIn.onchange = () => { const st = H.get(); st.trafico = traffic; H.set(st); if (traffic === 0) { cars = cars.filter(c => c.racer); } say('🚗 Tránsito: ' + trafTxt(traffic).toLowerCase()); };
     trafIn.addEventListener('keydown', (e) => e.stopPropagation());
-    const optPanel = h('div', { class: 'brr-panel brr-opts', style: 'display:none' },
-      h('b', { text: '⚙ Opciones' }),
-      row('Tránsito', h('div', { style: 'display:flex;align-items:center;gap:10px' }, trafIn, trafLbl)),
-      row('Clima', pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); })),
-      row('Vehículo', pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); me.c = myColor(); say(`Ahora manejás: ${V.n}`); } })),
-      row('Fórmula 1: combinación con tu color', pick('Pintura', Object.entries(LIVN), liv, (v) => { liv = v; const s = H.get(); s.liv = v; H.set(s); if (me) me.c = myColor(); })),
-      row('Tablero', pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); })),
-      row('Cámara', pick('Cámara', Object.entries(CAMS), camMode, (v) => { camMode = v; const st = H.get(); st.cam = v; H.set(st); })),
-      h('div', { class: 'brr-row' }, dmgBtn, sndBtn),
-      h('div', { class: 'brr-row' },
-        btn('🏠 Volver a Casa', () => { if (!G || !me || race) return; if (!home) return say('Todavía no hay una Casa en este mapa'); if (!homeStart()) { const [x, y] = homeW(HL.gu, -4); me.x = x; me.y = y; me.a = Math.atan2(home.uy, home.ux); me.vf = me.vr = 0; say(`El ${VEH[veh].n.toLowerCase()} no entra en el garaje: quedaste en la puerta`); } else say('🏠 Estás en el garaje de Casa'); toggleOpts(false); }),
-        btn('📍 Elegir dónde está Casa', () => { if (!G || !me || race) return; toggleOpts(false); startPick(); })),
-      btn('Listo', () => toggleOpts(false), 'primary'));
+    const sec = (title, ...kids) => h('div', { class: 'brr-sec' }, h('h4', { text: title }), ...kids);
+    function goHome() { if (!G || !me || race) return; if (!home) return say('Todavía no hay una Casa en este mapa'); if (!homeStart()) { const [x, y] = homeW(HL.gu, -4); me.x = x; me.y = y; me.a = Math.atan2(home.uy, home.ux); me.vf = me.vr = 0; say(`El ${VEH[veh].n.toLowerCase()} no entra en el garaje: quedaste en la puerta`); } else say('🏠 Estás en el garaje de Casa'); }
+    // reiniciar todo: auto nuevo en el garaje, tanque lleno, puntos en cero, tránsito nuevo
+    function resetGame() {
+      if (!G || !me) return;
+      if (!confirm('¿Reiniciar el juego? Volvés a Casa con el auto nuevo y los puntos de esta partida vuelven a cero.')) return;
+      if (race) { race = null; syncRaceBtns(); }
+      if (mode === 'carrera') mode = H.get().mode === 'libre' ? 'libre' : 'entregas';
+      startCar(); if (!homeStart()) {} autoLights();
+      me.fuel = 1; me.dmg = 0; me.hits = []; smoke = []; skids = []; blink.l = blink.r = blink.haz = false; siren = false;
+      stats = { red: 0, crash: 0, done: 0, pts: 0 }; job = null; cars = [];
+      for (let i = 0; i < Math.round(30 * traffic / 50); i++) spawnCar(false);
+      for (const pc of G.parked) { pc.hits = []; pc.dmg = 0; pc.haz = false; }
+      syncModeSeg(); state = 'run'; msg.hidden = true; run();
+      if (mode === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras');
+      toggleOpts(false);
+    }
+    const optPanel = h('div', { class: 'brr-menu', style: 'display:none' },
+      h('div', { class: 'brr-mh' }, h('b', { text: '☰ Menú' }), h('small', { text: 'M abre y cierra este menú · el juego queda en pausa mientras está abierto' })),
+      h('div', { class: 'brr-grid' },
+        sec('🎮 Jugar',
+          modeSeg = seg([['entregas', 'Entregas'], ['libre', 'Libre'], ['carrera', '🏁 Carreras']], mode, (v) => {
+            if (v === 'carrera') { if (G && me) { toggleOpts(false); raceMenu(); } return; }
+            const was = !!race; endRace(); mode = v; const s = H.get(); s.mode = v; H.set(s); job = null;
+            if (state === 'run' || state === 'menu-pause' || was) { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); }
+          }),
+          h('div', { class: 'brr-row' },
+            (restartBtn = btn('↺ Reiniciar carrera', () => { if (race) { toggleOpts(false); startRace(race.tr); } })),
+            (backBtn = btn('↩ Volver a la calle', () => { if (me) { resetToRoad(); toggleOpts(false); } })),
+            btn('🗺 Cambiar de zona', () => { toggleOpts(false); menu(); }),
+            btn('⟲ Reiniciar el juego', resetGame))),
+        sec('🏠 Casa',
+          h('div', { class: 'brr-row' },
+            btn('🏠 Volver a Casa', () => { goHome(); toggleOpts(false); }),
+            btn('📍 Elegir dónde está Casa', () => { if (!G || !me || race) return; toggleOpts(false); startPick(); }))),
+        sec('🚗 Tu vehículo',
+          row('Vehículo', pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); me.c = myColor(); say(`Ahora manejás: ${V.n}`); } })),
+          row('Fórmula 1: combinación con tu color', pick('Pintura', Object.entries(LIVN), liv, (v) => { liv = v; const s = H.get(); s.liv = v; H.set(s); if (me) me.c = myColor(); })),
+          h('div', { class: 'brr-row' }, dmgBtn)),
+        sec('🌆 Ciudad',
+          row('Tránsito', h('div', { style: 'display:flex;align-items:center;gap:10px' }, trafIn, trafLbl)),
+          row('Clima', pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); }))),
+        sec('🖥 Pantalla y sonido',
+          row('Cámara', pick('Cámara', Object.entries(CAMS), camMode, (v) => { camMode = v; const st = H.get(); st.cam = v; H.set(st); })),
+          row('Tablero', pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); })),
+          h('div', { class: 'brr-row' }, sndBtn, btn('⛶ Pantalla completa', () => toggleFull())))),
+      h('div', { class: 'brr-row', style: 'justify-content:flex-end' }, btn('Seguir jugando', () => toggleOpts(false), 'primary')));
     root.append(optPanel);
-    function toggleOpts(v) { const on = v == null ? optPanel.style.display === 'none' : v; optPanel.style.display = on ? '' : 'none'; }
+    // el menú pone el juego en pausa mientras está abierto
+    function toggleOpts(v) {
+      const on = v == null ? optPanel.style.display === 'none' : v;
+      optPanel.style.display = on ? '' : 'none';
+      if (on && state === 'run') { state = 'menu-pause'; keys = {}; }
+      else if (!on && state === 'menu-pause') { state = 'run'; }
+      syncRaceBtns();
+    }
     // pantalla completa (sólo el juego)
     function toggleFull() { try { if (document.fullscreenElement) document.exitFullscreen(); else root.requestFullscreen({ navigationUI: 'hide' }); } catch {} }
     const tools = [
-      modeSeg = seg([['entregas', 'Entregas'], ['libre', 'Libre'], ['carrera', '🏁 Carreras']], mode, (v) => {
-        if (v === 'carrera') { if (G && me) raceMenu(); return; }
-        const was = !!race; endRace(); mode = v; const s = H.get(); s.mode = v; H.set(s); job = null;
-        if (state === 'run' || was) { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); }
-      }),
-      btn('🗺 Zona', () => menu()),
-      (backBtn = btn('↩ A la calle', () => { if (state === 'run') resetToRoad(); })),
-      (restartBtn = btn('↺ Reiniciar', () => { if (race) startRace(race.tr); })),
-      btn('⚙ Opciones', () => toggleOpts()),
-      btn('⛶ Pantalla completa', () => toggleFull())
+      btn('☰ Menú', () => toggleOpts()),
+      btn('⛶', () => toggleFull())
     ];
+    tools[1].title = 'Pantalla completa (F)';
     syncRaceBtns();
     requestAnimationFrame(async () => {
       fit();
@@ -2264,7 +2307,7 @@
     return {
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = myColor(id); },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · F pantalla completa · P pausa. Podés ir por el borde de la vereda, más despacio. Tu Casa tiene garaje: entrá despacio, quedate quieto adentro y el auto queda guardado (con el tanque lleno y arreglado); en Opciones podés volver a Casa o elegir con un clic en el mapa dónde querés que esté. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · M menú · F pantalla completa · P pausa. Podés ir por el borde de la vereda, más despacio. Tu Casa tiene garaje: entrá despacio, quedate quieto adentro y el auto queda guardado (con el tanque lleno y arreglado); en el Menú (tecla M) podés volver a Casa o elegir con un clic en el mapa dónde querés que esté. En el Menú están también el modo de juego, el tránsito, el clima, el vehículo, la cámara y Reiniciar el juego. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };
