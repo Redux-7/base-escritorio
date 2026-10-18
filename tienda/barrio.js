@@ -24,12 +24,13 @@
     camion: { tank: 12000, n: 'Camión', t: 'truck', len: 9, wid: 2.5, acc: 2.1, vmax: 25, wb: 5, grip: 7, steer: 0.56 }
   };
   // hash para que lo "al azar" del mapa salga siempre igual
+  const PARK = 2.4; // ancho del carril para estacionar, a cada lado (calles de barrio y avenidas)
   const hsh = (a, b) => { let x = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263); x = Math.imul(x ^ (x >>> 13), 1274126177); return ((x ^ (x >>> 16)) >>> 0) / 4294967296; };
 
   // ===================== preparar el mapa =====================
   function prepare(m) {
     const S = 0.5;
-    const roads = m.roads.map((r) => { const p = []; for (let i = 0; i < r.p.length; i += 2) p.push([r.p[i] * S, r.p[i + 1] * S]); return { n: r.n, k: r.k, w: r.k >= 7 ? r.w : r.w * 1.18 + 0.6, o: r.o, p, nd: r.nd && r.nd.length === p.length ? r.nd : null }; });
+    const roads = m.roads.map((r) => { const p = []; for (let i = 0; i < r.p.length; i += 2) p.push([r.p[i] * S, r.p[i + 1] * S]); const cw = r.k >= 7 ? r.w : r.w * 1.18 + 0.6, pk = r.k >= 2 && r.k <= 5 ? PARK : 0; return { n: r.n, k: r.k, w: cw + pk * 2, cw, pk, o: r.o, p, nd: r.nd && r.nd.length === p.length ? r.nd : null }; });
     // nodos del grafo: los puntos compartidos entre calles son esquinas
     roads.forEach((r, ri) => { r.ri = ri; });
     const links = new Map();
@@ -210,6 +211,55 @@
         }
       }
     });
+    // paradas de colectivo sobre las avenidas, cada ~300 m, del lado derecho de cada mano
+    G.busStops = [];
+    const nearLight = (x, y, d) => { for (const L of G.lights.values()) if (Math.abs(L.x - x) < d && Math.abs(L.y - y) < d) return true; return false; };
+    roads.forEach((r, ri) => {
+      if (r.k < 2 || r.k > 3) return;
+      // recorre la calle entera y pone una parada cada ~300 m (si el lugar no sirve, prueba un poco más adelante)
+      let next = 120 + hsh(ri, 3) * 180, run = 0;
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 1) continue;
+        const ux = (bx - ax) / L, uy = (by - ay) / L;
+        while (next < run + L) {
+          const t = next - run;
+          let ok = false;
+          if (t > 16 && t < L - 16) for (const sd of r.o ? [r.o] : [1, -1]) {
+            const ts = Math.min(L - 16, t + (sd < 0 && !r.o ? 30 : 0)), x = ax + ux * ts, y = ay + uy * ts;
+            if (G.nearCorner(x, y, r.w / 2 + 14) || nearLight(x, y, 30) || G.stations.some(st => Math.hypot(st.ex - x, st.ey - y) < 30)) continue;
+            const nx = -uy * sd, ny = ux * sd, off = r.w / 2 - r.pk / 2;
+            G.busStops.push({ ri, i, x: x + nx * off, y: y + ny * off, ang: Math.atan2(uy * sd, ux * sd), sx: x + nx * (r.w / 2 + 2.1), sy: y + ny * (r.w / 2 + 2.1), nx, ny, ux: ux * sd, uy: uy * sd, sd });
+            ok = true;
+          }
+          next += ok ? 300 : 25;
+        }
+        run += L;
+      }
+    });
+    // autos estacionados junto al cordón (siempre los mismos para el mismo lugar)
+    G.parked = []; const pgrid = new Map();
+    roads.forEach((r, ri) => {
+      if (!r.pk) return;
+      const dens = r.k === 2 ? 0.3 : r.k === 3 ? 0.42 : 0.5;
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 16) continue;
+        const ux = (bx - ax) / L, uy = (by - ay) / L;
+        for (let t = 7; t < L - 7; t += 6.3) for (const sd of [1, -1]) {
+          const q = hsh(ri * 7349 + i * 17 + (sd > 0 ? 1 : 0), Math.round(t * 10)); if (q > dens) continue;
+          const x = ax + ux * t, y = ay + uy * t;
+          if (G.nearCorner(x, y, r.w / 2 + 9) || nearLight(x, y, r.w / 2 + 14)) continue;
+          if (G.busStops.some(b => Math.abs(b.x - x) < 26 && Math.abs(b.y - y) < 26 && Math.hypot(b.x - x - (-uy * sd) * (r.w / 2 - r.pk / 2), b.y - y - (ux * sd) * (r.w / 2 - r.pk / 2)) < 14)) continue;
+          if (G.stations.some(st => Math.hypot(st.ex - x, st.ey - y) < 22)) continue;
+          const nx = -uy * sd, ny = ux * sd, off = r.w / 2 - r.pk / 2 + 0.05, q2 = hsh(ri + 11, Math.round(t * 7) + sd);
+          const ty = q2 < 0.07 ? 'pickup' : q2 < 0.12 ? 'taxi' : 'auto', dims = { pickup: [5.1, 1.95], taxi: [4.4, 1.85], auto: [4.2 + q2 * 0.4, 1.8] }[ty];
+          const pc = { x: x + nx * off, y: y + ny * off, a: Math.atan2(uy * sd, ux * sd) + (q2 > 0.93 ? Math.PI : 0), type: ty, c: ty === 'taxi' ? '#1b1b1d' : CAR_COLS[Math.floor(q2 * 997) % CAR_COLS.length], len: dims[0], wid: dims[1], parked: true, v: 0 };
+          G.parked.push(pc);
+          const k2 = key(Math.floor(pc.x / C), Math.floor(pc.y / C)); let gl = pgrid.get(k2); if (!gl) pgrid.set(k2, gl = []); gl.push(pc);
+        }
+      }
+    });
+    G.parkedNear = (x, y, r) => { const out = []; for (let cx = Math.floor((x - r) / C); cx <= Math.floor((x + r) / C); cx++) for (let cy = Math.floor((y - r) / C); cy <= Math.floor((y + r) / C); cy++) { const gl = pgrid.get(key(cx, cy)); if (gl) for (const pc of gl) if (!pc.gone) out.push(pc); } return out; };
+    G.roadDist = roadDist; G.nearSeg = nearSeg;
     return G;
   }
   function pointInPoly(x, y, p) { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const [xi, yi] = p[i], [xj, yj] = p[j]; if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) c = !c; } return c; }
@@ -238,6 +288,157 @@
       return null;
     }
     const shopAt = (x, y) => { const L = lotAt(x, y); return !!L && L.u > 10.8 && L.u < 15.8 && L.v > 9.6 && L.v < 16.8; };
+
+    // ---------- Casa: una casa con garaje para guardar el auto (cada uno elige dónde, en el juego) ----------
+    let home = null;
+    const HL = { gu: -3.6, gw: 1.9, g0: 6, g1: 12.6, hu0: -1.35, hu1: 7.8, hv0: 4.6, hv1: 15.2 };
+    const toHome = (x, y) => { const dx = x - home.ex, dy = y - home.ey; return [dx * home.ux + dy * home.uy, dx * home.vx + dy * home.vy]; };
+    const homeW = (u, v) => [home.ex + home.ux * u + home.vx * v, home.ey + home.uy * u + home.vy * v];
+    function makeHome(r, ri, i, t, sd) {
+      const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay) || 1, ux = (bx - ax) / L, uy = (by - ay) / L, vx = -uy * sd, vy = ux * sd;
+      return { ri, i, t, sd, ex: ax + ux * t + vx * (r.w / 2), ey: ay + uy * t + vy * (r.w / 2), ux, uy, vx, vy, door: 1, still: 0, stored: false };
+    }
+    function homeOk(H0) {
+      for (const u of [-8, -4, 0, 4, 8]) for (const v of [4, 9, 13.5, 18.5]) {
+        const x = H0.ex + H0.ux * u + H0.vx * v, y = H0.ey + H0.uy * u + H0.vy * v;
+        if (G.roadDist(x, y) < 1.2 || lotAt(x, y) || G.busStops.some(b => Math.hypot(b.sx - x, b.sy - y) < 14)) return false;
+      }
+      return true;
+    }
+    function homeSpot(x0, y0) {
+      const cands = [];
+      G.roads.forEach((r, ri) => { if (r.k < 4 || r.k > 5) return; for (let i = 0; i < r.p.length - 1; i++) { const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 32) continue; cands.push({ ri, i, L, d: Math.hypot((ax + bx) / 2 - x0, (ay + by) / 2 - y0) }); } });
+      cands.sort((a, b) => a.d - b.d);
+      for (const c of cands.slice(0, 120)) {
+        const r = G.roads[c.ri], [ax, ay] = r.p[c.i], ux = (r.p[c.i + 1][0] - ax) / c.L, uy = (r.p[c.i + 1][1] - ay) / c.L;
+        // el punto del tramo más cercano a donde estás
+        const t0 = Math.max(14, Math.min(c.L - 14, (x0 - ax) * ux + (y0 - ay) * uy));
+        for (const t of [t0, c.L / 2, t0 - 10, t0 + 10, c.L * 0.3, c.L * 0.7]) for (const sd of [1, -1]) {
+          if (t < 14 || t > c.L - 14) continue;
+          const H0 = makeHome(r, c.ri, c.i, t, sd); if (homeOk(H0)) return H0;
+        }
+      }
+      return null;
+    }
+    const inHomeArea = (x, y, pad = 0) => { if (!home) return false; const [u, v] = toHome(x, y); return u > -8.6 - pad && u < 10 + pad && v > -0.6 && v < 19 + pad; };
+    function buildHome() {
+      home = null;
+      for (const b of G.buildings) b.hidden = false;
+      for (const pc of G.parked) pc.gone = false;
+      const sv = (H.get().casa || {})[mapId];
+      if (sv && G.roads[sv.ri] && G.roads[sv.ri].p[sv.i + 1]) home = makeHome(G.roads[sv.ri], sv.ri, sv.i, sv.t, sv.sd);
+      if (!home) home = homeSpot(0, 0);
+      if (!home) return;
+      // el terreno queda libre: sin otras casas, árboles de vereda ni autos estacionados en la entrada
+      const [cx, cy] = homeW(1, 9);
+      for (const b of G.inRect(cx - 26, cy - 26, cx + 26, cy + 26).buildings) {
+        const pts = [...b.p, [(b.bb[0] + b.bb[2]) / 2, (b.bb[1] + b.bb[3]) / 2]];
+        if (pts.some(([x, y]) => inHomeArea(x, y))) { b.hidden = true; continue; }
+        for (let u = -8; u <= 9.5; u += 1.5) for (let v = 3.5; v <= 18.5; v += 1.5) { const [x, y] = homeW(u, v); if (x >= b.bb[0] && x <= b.bb[2] && y >= b.bb[1] && y <= b.bb[3] && pointInPoly(x, y, b.p)) { b.hidden = true; u = 99; break; } }
+      }
+      for (const pc of G.parkedNear(home.ex, home.ey, 16)) { const [u, v] = toHome(pc.x, pc.y); if (u > -9.5 && u < 2.3 && v < 1) pc.gone = true; }
+      tiles.clear();
+    }
+    // la casa y las paredes del garaje son sólidas; el portón también mientras no esté abierto
+    function homeSolid(x, y) {
+      if (!home) return false;
+      const [u, v] = toHome(x, y); if (u < -8 || u > 10 || v < 3 || v > 19) return false;
+      if (u > HL.hu0 && u < HL.hu1 && v > HL.hv0 && v < HL.hv1) return true;
+      const gl = HL.gu - HL.gw, gr = HL.gu + HL.gw;
+      if (v > HL.g0 - 0.1 && v < HL.g1 + 0.3 && ((u > gl - 0.3 && u < gl) || (u > gr && u < gr + 0.3))) return true;
+      if (v >= HL.g1 && v < HL.g1 + 0.3 && u > gl - 0.3 && u < gr + 0.3) return true;
+      if (home.door < 0.85 && v > HL.g0 - 0.2 && v < HL.g0 + 0.2 && u > gl && u < gr) return true;
+      return false;
+    }
+    // la entrada de autos y el garaje: ahí se puede pasar el cordón
+    const homeLot = (x, y) => { if (!home) return false; const [u, v] = toHome(x, y); return u > HL.gu - HL.gw - 0.4 && u < HL.gu + HL.gw + 0.4 && v > -0.8 && v < HL.g1 + 0.3; };
+    const fitsGarage = () => me && me.len <= 6 && me.wid <= 2.3;
+    function homeIn() {
+      if (!home) return false;
+      const c = Math.cos(me.a), s2 = Math.sin(me.a);
+      return [[me.len / 2, me.wid / 2], [me.len / 2, -me.wid / 2], [-me.len / 2, me.wid / 2], [-me.len / 2, -me.wid / 2]].every(([fx, fy]) => { const [u, v] = toHome(me.x + c * fx - s2 * fy, me.y + s2 * fx + c * fy); return u > HL.gu - HL.gw && u < HL.gu + HL.gw && v > HL.g0 + 0.1 && v < HL.g1; });
+    }
+    function homeStep(dt) {
+      if (!home) return;
+      const [u, v] = toHome(me.x, me.y), inG = homeIn();
+      const near = Math.abs(u - HL.gu) < 6 && v > -5 && v < HL.g1 + 1;
+      if (inG) {
+        const quiet = Math.abs(me.vf) < 0.3 && !keys.up && !keys.down;
+        home.still = quiet ? home.still + dt : 0;
+        if (!home.stored && home.still > 1.2) {
+          home.stored = true; me.fuel = 1; me.dmg = 0; me.hits = []; smoke = [];
+          say('🏠 Guardaste el auto en el garaje de Casa. Tanque lleno y auto arreglado'); SND.blip(523, 0.15, 'triangle', 0.12); setTimeout(() => SND.blip(784, 0.25, 'triangle', 0.12), 130);
+          const st = H.get(); st.guardado = (st.guardado || 0) + 1; H.set(st);
+        }
+        if (home.stored && (keys.up || keys.down)) { home.stored = false; say('Se abre el portón…'); }
+      } else { home.stored = false; home.still = 0; }
+      const want = inG ? (home.stored ? 0 : 1) : (near && fitsGarage() ? 1 : 0);
+      const was = home.door; home.door += Math.max(-dt * 0.8, Math.min(dt * 0.8, want - home.door));
+      if ((was < 1 && home.door >= 1) || (was > 0 && home.door <= 0)) SND.blip(140, 0.12, 'square', 0.04);
+      if (near && !fitsGarage() && v < 4 && Math.abs(me.vf) < 3 && !home.warned) { home.warned = true; say(`El ${VEH[veh].n.toLowerCase()} no entra en el garaje`); }
+      if (!near) home.warned = false;
+    }
+    function homeStart() {
+      // arrancás adentro del garaje, mirando a la calle
+      if (!home || !fitsGarage()) return false;
+      const [x, y] = homeW(HL.gu, (HL.g0 + HL.g1) / 2 + 0.3);
+      me.x = x; me.y = y; me.a = Math.atan2(-home.vy, -home.vx); me.vf = me.vr = 0; home.door = 0; home.stored = true; home.still = 9;
+      camX = me.x; camY = me.y; return true;
+    }
+    // el terreno (pasto, entrada de autos, caminito) va dibujado en el mosaico del mapa
+    function drawHomeGround(g) {
+      if (!home) return;
+      g.save(); g.translate(home.ex, home.ey); g.transform(home.ux, home.uy, home.vx, home.vy, 0, 0);
+      g.fillStyle = '#7d9156'; g.fillRect(-8.6, 3.3, 18.6, 15.7);
+      g.fillStyle = 'rgba(255,255,255,.05)'; for (let v = 3.3; v < 19; v += 2) g.fillRect(-8.6, v, 18.6, 1);
+      // medianeras
+      g.fillStyle = '#c9c3b6'; g.fillRect(-8.8, 3.3, 0.25, 15.7); g.fillRect(10, 3.3, 0.25, 15.7); g.fillRect(-8.8, 18.8, 19, 0.25);
+      // reja del frente (con hueco para la entrada y el caminito)
+      g.fillStyle = '#3d3f43'; g.fillRect(-8.6, 3.35, 2.7, 0.18); g.fillRect(-1.45, 3.35, 2.6, 0.18); g.fillRect(2.9, 3.35, 7.1, 0.18);
+      // entrada de autos de hormigón (cruza la vereda) y caminito a la puerta
+      g.fillStyle = '#bdb9b0'; g.fillRect(HL.gu - 2, -0.25, 4, HL.g0 + 0.3);
+      g.strokeStyle = 'rgba(0,0,0,.1)'; g.lineWidth = 0.06; for (let v = 0.8; v < HL.g0; v += 1.4) { g.beginPath(); g.moveTo(HL.gu - 2, v); g.lineTo(HL.gu + 2, v); g.stroke(); }
+      g.fillStyle = '#9d9a94'; g.fillRect(HL.gu - HL.gw, HL.g0, HL.gw * 2, HL.g1 - HL.g0);
+      g.strokeStyle = 'rgba(0,0,0,.12)'; g.lineWidth = 0.05; g.strokeRect(HL.gu - 1.1, HL.g0 + 1.2, 2.2, 4.6);
+      g.fillStyle = '#cfc8ba'; g.fillRect(1.2, 3.3, 1.6, 1.4);
+      for (let k = 0; k < 2; k++) { g.fillStyle = '#d8d1c4'; g.fillRect(1.25, 3.4 + k * 0.65, 1.5, 0.5); }
+      // canteros con flores
+      for (const [fu, fv] of [[3.6, 4], [5.8, 4.1], [8.2, 3.9], [-0.6, 4.1]]) { g.fillStyle = '#5f7a3b'; g.beginPath(); g.arc(fu, fv, 0.55, 0, TAU); g.fill(); g.fillStyle = ['#e85d75', '#f2c14e', '#ffffff', '#c06cd8'][Math.abs(Math.round(fu * 3)) % 4]; for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(fu + Math.cos(k * 1.6) * 0.3, fv + Math.sin(k * 1.6) * 0.3, 0.12, 0, TAU); g.fill(); } }
+      // árbol del fondo
+      drawTree(g, 7.6, 17.4, 2.4, 0.4);
+      g.restore();
+    }
+    // garaje y casa (encima de los autos: el techo del garaje se vuelve transparente cuando estás adentro)
+    function drawHome() {
+      if (!home) return;
+      const c = ctx; c.save(); c.translate(home.ex, home.ey); c.transform(home.ux, home.uy, home.vx, home.vy, 0, 0);
+      const gl = HL.gu - HL.gw, gr = HL.gu + HL.gw, inside = (() => { const [u, v] = toHome(me.x, me.y); return u > gl - 1 && u < gr + 1 && v > HL.g0 - 1.5 && v < HL.g1 + 1; })();
+      // sombras
+      c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(gl - 0.3 + 0.7, HL.g0 + 0.6, gr - gl + 0.6, HL.g1 - HL.g0 + 0.3); c.fillRect(HL.hu0 + 0.9, HL.hv0 + 0.8, HL.hu1 - HL.hu0, HL.hv1 - HL.hv0);
+      // casa: techo de tejas a cuatro aguas
+      { const A = (HL.hu1 - HL.hu0) / 2, B = (HL.hv1 - HL.hv0) / 2; const fb = { rect: { cx: (HL.hu0 + HL.hu1) / 2, cy: (HL.hv0 + HL.hv1) / 2, A, B }, ax: 0 }; hipRoof(c, fb, '#9a5a40'); c.strokeStyle = 'rgba(0,0,0,.3)'; c.lineWidth = 0.22; c.strokeRect(HL.hu0, HL.hv0, HL.hu1 - HL.hu0, HL.hv1 - HL.hv0); }
+      // chimenea y tanque
+      c.fillStyle = '#6d6a66'; c.fillRect(5.6, 12.4, 0.9, 0.9); c.fillStyle = '#2c2f33'; c.beginPath(); c.arc(1.2, 13.2, 0.75, 0, TAU); c.fill();
+      // garaje: piso, paredes y techo
+      c.fillStyle = '#e9e4da'; c.fillRect(gl - 0.3, HL.g0, 0.3, HL.g1 - HL.g0 + 0.3); c.fillRect(gr, HL.g0, 0.3, HL.g1 - HL.g0 + 0.3); c.fillRect(gl - 0.3, HL.g1, gr - gl + 0.6, 0.3);
+      c.globalAlpha = inside ? 0.25 : 1;
+      c.fillStyle = '#7f858c'; c.fillRect(gl - 0.35, HL.g0 - 0.15, gr - gl + 0.7, HL.g1 - HL.g0 + 0.5);
+      c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 0.08; c.beginPath(); for (let u = gl; u < gr + 0.3; u += 0.4) { c.moveTo(u, HL.g0 - 0.1); c.lineTo(u, HL.g1 + 0.3); } c.stroke();
+      c.globalAlpha = 1;
+      // portón levadizo: se ve más corto a medida que sube
+      const op = Math.max(0, Math.min(1, home.door));
+      c.fillStyle = '#d6d1c6'; c.fillRect(gl, HL.g0 - 0.2, (gr - gl) * (1 - op), 0.4);
+      c.fillStyle = '#ffd60a'; c.fillRect(gl - 0.35, HL.g0 - 0.25, 0.2, 0.5); c.fillRect(gr + 0.15, HL.g0 - 0.25, 0.2, 0.5);
+      if (op > 0.05 && op < 0.95) { c.fillStyle = (clock * 3) % 1 < 0.5 ? '#ffae00' : '#7a5200'; c.beginPath(); c.arc(gr + 0.6, HL.g0 - 0.5, 0.25, 0, TAU); c.fill(); }
+      // cartel "CASA" junto a la reja (siempre derecho)
+      c.restore();
+      const [lx, ly] = homeW(4.2, 2.6);
+      c.save(); c.translate(lx, ly); c.rotate(-camRot);
+      c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.roundRect(-3.3 + 0.25, -1.05 + 0.25, 6.6, 2.1, 0.5); c.fill();
+      c.fillStyle = '#2f6fd1'; c.beginPath(); c.roundRect(-3.3, -1.05, 6.6, 2.1, 0.5); c.fill();
+      c.fillStyle = '#fff'; c.font = '800 1.35px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('🏠 CASA', 0, 0.08);
+      c.restore();
+    }
     const WX = { dia: 'Día', noche: 'Noche', lluvia: 'Lluvia', noche_lluvia: 'Noche con lluvia' };
     let wx = WX[H.get().wx] ? H.get().wx : 'dia';
     const isNight = () => wx === 'noche' || wx === 'noche_lluvia', isRain = () => wx === 'lluvia' || wx === 'noche_lluvia';
@@ -324,7 +525,7 @@
     function nearRail(x, y) { for (const a of G.rails) { if (x < a.bb[0] - 8 || x > a.bb[2] + 8 || y < a.bb[1] - 8 || y > a.bb[3] + 8) continue; for (let i = 0; i < a.p.length - 1; i++) { const [ax, ay] = a.p[i], [bx, by] = a.p[i + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); if (Math.hypot(x - ax - dx * t, y - ay - dy * t) < 7) return true; } } return false; }
     function genHouses(x0, y0, x1, y1) {
       if (!G.genDone) G.genDone = new Set();
-      const free = (x, y) => { const q = nearestRoad(x, y); return !!q && q.d >= 3.15 && !inBuilding(x, y) && !lotAt(x, y) && !inGreen(x, y); };
+      const free = (x, y) => { const q = nearestRoad(x, y); return !!q && q.d >= 3.15 && !inBuilding(x, y) && !lotAt(x, y) && !inGreen(x, y) && !inHomeArea(x, y, 1) && !G.busStops.some(b => Math.abs(b.sx - x) < 9 && Math.abs(b.sy - y) < 9); };
       for (const r of G.inRect(x0, y0, x1, y1).roads) {
         if (r.k < 2 || r.k > 6) continue;
         for (let i = 0; i < r.p.length - 1; i++) {
@@ -342,7 +543,7 @@
               if (![...pts, P(0, (f0 + f1) / 2), P(0, f0), P(0, f1)].every(([x, y]) => free(x, y)) || nearRail(cx + nx * f1, cy + ny * f1)) continue;
               const bb = [Math.min(...pts.map(p => p[0])), Math.min(...pts.map(p => p[1])), Math.max(...pts.map(p => p[0])), Math.max(...pts.map(p => p[1]))];
               const b = { p: pts, bb, c: H2(4), gen: true, yard: { fences: [[P(-5, r.w / 2 + 3.3), P(-5, f1 + 7)], [P(5, r.w / 2 + 3.3), P(5, f1 + 7)]], front: [P(-5, r.w / 2 + 3.3), P(5, r.w / 2 + 3.3)] } };
-              if (H2(5) < 0.5 && set > 1) b.drive = [P(wid / 2 - 2.9, r.w / 2 - 0.1), P(wid / 2 - 0.3, r.w / 2 - 0.1), P(wid / 2 - 0.3, f0), P(wid / 2 - 2.9, f0)];
+              if (H2(5) < 0.5 && set > 1) { b.drive = [P(wid / 2 - 2.9, r.w / 2 - 0.1), P(wid / 2 - 0.3, r.w / 2 - 0.1), P(wid / 2 - 0.3, f0), P(wid / 2 - 2.9, f0)]; const [mx, my] = P(wid / 2 - 1.6, r.w / 2 - r.pk / 2); for (const pc of G.parkedNear(mx, my, 6)) if (Math.hypot(pc.x - mx, pc.y - my) < 1.6 + pc.len / 2) pc.gone = true; }
               if (H2(6) > 0.86) { const pp = [P(-1.6, f1 + 1.6), P(1.6, f1 + 1.6), P(1.6, f1 + 6.4), P(-1.6, f1 + 6.4)]; if (pp.every(([x, y]) => free(x, y))) b.yard.pool = pp; }
               G.addB(b);
             }
@@ -397,14 +598,14 @@
       // en las calles de barrio, cantero de pasto entre la vereda y el cordón
       for (const r of near) { if (r.k < 5 || r.k >= 7) continue; for (const off of [-(r.w / 2 + 1.05), r.w / 2 + 1.05]) { offPath(g, r.p, off); g.strokeStyle = '#71824f'; g.lineWidth = 1.35; g.lineCap = 'butt'; g.stroke(); offPath(g, r.p, off); g.strokeStyle = 'rgba(40,55,25,.25)'; g.setLineDash([0.3, 0.5]); g.lineWidth = 1.1; g.stroke(); g.setLineDash([]); } g.lineCap = 'round'; }
       // entradas de autos de las casas (cortan el cantero)
-      for (const b of inside.buildings) if (b.drive) { g.beginPath(); b.drive.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fillStyle = '#bab7af'; g.fill(); g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 0.08; g.stroke(); }
+      for (const b of inside.buildings) if (b.drive && !b.hidden) { g.beginPath(); b.drive.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fillStyle = '#bab7af'; g.fill(); g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 0.08; g.stroke(); }
       for (const r of near) { path(r.p); g.strokeStyle = r.k === 8 ? '#a9a296' : '#e4dfd5'; g.lineWidth = r.w + 0.9; g.stroke(); }
       for (const r of near) { path(r.p); g.strokeStyle = r.k === 8 ? '#bdb5a6' : r.k <= 3 ? '#43464c' : '#4b4e54'; g.lineWidth = r.w; g.stroke(); }
       { const ap = g.createPattern(asphaltPattern(), 'repeat'); ap.setTransform && ap.setTransform(new DOMMatrix().scale(0.06)); for (const r of near) { if (r.k === 8) continue; path(r.p); g.strokeStyle = ap; g.lineWidth = r.w; g.stroke(); } }
       // huellas de las ruedas, parches, tapas de cloaca y grietas
       for (const r of near) {
         if (r.k >= 7) continue;
-        const lanes = r.w >= 9 ? [-r.w / 4, r.w / 4] : [0];
+        const lanes = r.cw >= 9 ? [-r.cw / 4, r.cw / 4] : [0];
         g.lineCap = 'butt';
         for (const lc of lanes) for (const tr of [-0.85, 0.85]) { offPath(g, r.p, lc + tr); g.strokeStyle = 'rgba(0,0,0,.075)'; g.lineWidth = 0.55; g.stroke(); }
         for (let i = 0; i < r.p.length - 1; i++) {
@@ -432,12 +633,13 @@
       for (const r of near) {
         if (r.k === 8 || r.k === 7) continue;
         g.lineCap = 'butt';
-        if (!r.o && r.w >= 9) {
+        if (!r.o && r.cw >= 9) {
           if (r.k <= 3) { for (const off of [-0.2, 0.2]) { offPath(g, r.p, off); g.strokeStyle = '#e0b43a'; g.lineWidth = 0.18; g.setLineDash([]); g.stroke(); } }
           else { path(r.p); g.strokeStyle = 'rgba(235,190,70,.85)'; g.lineWidth = 0.16; g.setLineDash([3, 4]); g.stroke(); }
         }
-        if (r.w >= 13) for (const off of r.o ? [-r.w / 6, r.w / 6] : [-r.w / 4, r.w / 4]) { offPath(g, r.p, off); g.strokeStyle = 'rgba(240,240,240,.7)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
-        else if (r.o && r.w >= 9) { path(r.p); g.strokeStyle = 'rgba(240,240,240,.6)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
+        if (r.cw >= 13) for (const off of r.o ? [-r.cw / 6, r.cw / 6] : [-r.cw / 4, r.cw / 4]) { offPath(g, r.p, off); g.strokeStyle = 'rgba(240,240,240,.7)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
+        else if (r.o && r.cw >= 9) { path(r.p); g.strokeStyle = 'rgba(240,240,240,.6)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
+        if (r.pk) for (const off of [-r.cw / 2, r.cw / 2]) { offPath(g, r.p, off); g.strokeStyle = 'rgba(240,240,236,.42)'; g.lineWidth = 0.12; g.setLineDash([2.2, 3.4]); g.stroke(); }
         g.setLineDash([]);
       }
       // sendas peatonales y líneas de frenado en las esquinas con semáforo
@@ -502,7 +704,7 @@
       bg.setTransform(RES, 0, 0, RES, -x0 * RES, -y0 * RES); bg.lineJoin = 'round';
       const bpath = (p) => { bg.beginPath(); p.forEach(([x, y], i) => i ? bg.lineTo(x, y) : bg.moveTo(x, y)); bg.closePath(); };
       const TILES = ['#8f5a46', '#7f5444', '#946651', '#7a5d52', '#865a48', '#6f6560'];
-      const blds = inside.buildings.filter(b => !G.stations.some(st => b.bb[2] > st.x - 19 && b.bb[0] < st.x + 19 && b.bb[3] > st.y - 19 && b.bb[1] < st.y + 19 && [[b.bb[0], b.bb[1]], [b.bb[2], b.bb[3]], [b.bb[0], b.bb[3]], [b.bb[2], b.bb[1]], [(b.bb[0] + b.bb[2]) / 2, (b.bb[1] + b.bb[3]) / 2]].some(([qx, qy]) => { const dx = qx - st.ex, dy = qy - st.ey, u = dx * st.ux + dy * st.uy, v = dx * st.vx + dy * st.vy; return u > -17 && u < 17 && v > -1 && v < 18; })));
+      const blds = inside.buildings.filter(b => !b.hidden && !G.stations.some(st => b.bb[2] > st.x - 19 && b.bb[0] < st.x + 19 && b.bb[3] > st.y - 19 && b.bb[1] < st.y + 19 && [[b.bb[0], b.bb[1]], [b.bb[2], b.bb[3]], [b.bb[0], b.bb[3]], [b.bb[2], b.bb[1]], [(b.bb[0] + b.bb[2]) / 2, (b.bb[1] + b.bb[3]) / 2]].some(([qx, qy]) => { const dx = qx - st.ex, dy = qy - st.ey, u = dx * st.ux + dy * st.uy, v = dx * st.vx + dy * st.vy; return u > -17 && u < 17 && v > -1 && v < 18; })));
       for (const b of blds) { if (!b.kind) bInfo(b); }
       // patios: medianeras, frentes con reja y alguna pileta
       for (const b of blds) if (b.yard) {
@@ -551,10 +753,32 @@
       for (const r of near) { bg.beginPath(); r.p.forEach(([x, y], i) => i ? bg.lineTo(x, y) : bg.moveTo(x, y)); bg.strokeStyle = '#000'; bg.lineWidth = r.k >= 7 ? r.w + 1 : r.w + 6.2; bg.stroke(); }
       bg.globalCompositeOperation = 'source-over';
       g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(bcv, 0, 0); g.restore();
+      if (home && Math.abs(home.ex - (x0 + x1) / 2) < TILE / 2 + 30 && Math.abs(home.ey - (y0 + y1) / 2) < TILE / 2 + 30) drawHomeGround(g);
+      // paradas de colectivo: refugio en la vereda, cartel y la dársena pintada en la calle
+      for (const b of G.busStops) {
+        if (b.x < x0 - 16 || b.x > x1 + 16 || b.y < y0 - 16 || b.y > y1 + 16) continue;
+        const r = G.roads[b.ri];
+        g.save(); g.translate(b.x, b.y); g.rotate(b.ang);
+        // dársena: recuadro amarillo con la palabra BUS (el lado del cordón es +y)
+        const hw = r.pk / 2 - 0.1; g.strokeStyle = 'rgba(245,197,24,.85)'; g.lineWidth = 0.16; g.strokeRect(-8, -hw, 16, hw * 2);
+        g.beginPath(); for (let u = -8; u < 8; u += 2) { g.moveTo(u, -hw); g.lineTo(u + 1, hw); g.lineTo(u + 2, -hw); } g.lineWidth = 0.1; g.stroke();
+        g.save(); g.scale(1, 1); g.fillStyle = 'rgba(245,197,24,.9)'; g.font = '800 1.2px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.rotate(Math.PI / 2); g.fillText('BUS', 0, 9.2); g.restore();
+        g.restore();
+        g.save(); g.translate(b.sx, b.sy); g.rotate(b.ang);
+        // refugio: sombra, techo de vidrio con marco, banco y cartel con el número
+        g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(-2.2 + 0.45, -0.55 + 0.4, 4.4, 1.5);
+        g.fillStyle = '#566270'; g.fillRect(-2.2, -0.55, 4.4, 1.5);
+        g.fillStyle = 'rgba(170,205,230,.75)'; g.fillRect(-2.0, -0.4, 4.0, 1.2);
+        g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 0.06; g.beginPath(); for (let u = -1.5; u < 2; u += 1) { g.moveTo(u, -0.4); g.lineTo(u, 0.8); } g.stroke();
+        g.fillStyle = '#7a4f2c'; g.fillRect(-1.5, 0.75, 3, 0.25);
+        g.fillStyle = '#2f3a46'; g.fillRect(2.9, -0.9, 0.18, 0.18);
+        g.fillStyle = '#f5c518'; g.beginPath(); g.arc(3.0, -0.8, 0.5, 0, TAU); g.fill(); g.fillStyle = '#1f3e80'; g.font = '800 0.5px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🚌', 3.0, -0.78);
+        g.restore();
+      }
       // árboles de vereda
       for (const [x, y, rr] of G.trees) {
         if (x < x0 - 6 || x > x1 + 6 || y < y0 - 6 || y > y1 + 6) continue;
-        if (lotAt(x, y)) continue;
+        if (lotAt(x, y) || inHomeArea(x, y)) continue;
         const q = hsh(x | 0, y | 0); drawTree(g, x, y, rr, q);
       }
       // tono general más sobrio (menos saturado)
@@ -601,8 +825,8 @@
       return best;
     }
     // una casa solo frena si no está pisando la calle o la vereda (los mapas a veces dibujan la casa hasta el cordón)
-    function solidAt(x, y) { if (shopAt(x, y)) return true; if (!inBuilding(x, y)) return false; const q = nearestRoad(x, y); return !(q && q.d < 3.2); }
-    function inBuilding(x, y) { const c = G.cell(x, y); if (!c) return false; for (const b of c.b) if (x >= b.bb[0] && x <= b.bb[2] && y >= b.bb[1] && y <= b.bb[3] && pointInPoly(x, y, b.p)) return true; return false; }
+    function solidAt(x, y) { if (shopAt(x, y) || homeSolid(x, y)) return true; if (!inBuilding(x, y)) return false; const q = nearestRoad(x, y); return !(q && q.d < 3.2); }
+    function inBuilding(x, y) { const c = G.cell(x, y); if (!c) return false; for (const b of c.b) if (!b.hidden && x >= b.bb[0] && x <= b.bb[2] && y >= b.bb[1] && y <= b.bb[3] && pointInPoly(x, y, b.p)) return true; return false; }
 
     // ---------- autos de la compu ----------
     function spawnCar(near) {
@@ -625,7 +849,7 @@
       }
     }
     function segOf(c) { const r = G.roads[c.ri], A = r.p[c.i], B = r.p[c.i + c.dir]; return { r, A, B }; }
-    const laneOff = (r, lane) => r.o ? lane * Math.min(r.w / 4, 1.8) : Math.min(r.w / 4, 3.2);
+    const laneOff = (r, lane) => r.o ? lane * Math.min(r.cw / 4, 1.8) : Math.min(r.cw / 4, 3.2);
     // al doblar, el carril de entrada y el de salida se cruzan en un punto P: el auto deja el tramo viejo un poco antes
     // de la esquina y entra al nuevo un poco después (así no vuelve para atrás haciendo un rulo)
     function turnCut(c, o) {
@@ -701,6 +925,19 @@
       // guiño antes de doblar
       if (distEnd < 30 && !c.plan) { c.plan = planTurn(c); c.cut = c.plan ? turnCut(c, c.plan) : null; c.sig = c.plan && G.deg(endNode) >= 3 ? (c.plan.turn > 0.45 ? 1 : c.plan.turn < -0.45 ? -1 : 0) : 0; }
       if (isRain()) want *= 0.82;
+      // los colectivos paran en las paradas
+      if (c.bus && !race) {
+        if (c.stopT > 0) { c.stopT -= dt; want = 0; c.sig = 1; if (c.stopT <= 0) c.sig = 0; }
+        else for (const b of G.busStops) {
+          if (b === c.lastStop) continue;
+          const dx = b.x - c.x, dy = b.y - c.y; if (Math.abs(dx) > 45 || Math.abs(dy) > 45) continue;
+          const ah = dx * Math.cos(c.a) + dy * Math.sin(c.a), lat = -dx * Math.sin(c.a) + dy * Math.cos(c.a);
+          if (Math.cos(b.ang - c.a) < 0.85 || ah < -3 || ah > 40 || lat < 0 || lat > 7) continue;
+          want = Math.min(want, Math.sqrt(Math.max(0, 2 * 2.4 * (ah - 0.5))));
+          if (ah < 1.5) { c.stopT = 5 + Math.random() * 3; c.lastStop = b; c.v = 0; }
+          break;
+        }
+      }
       // auto de adelante (y el tuyo)
       for (const o of [...cars, me]) {
         if (o === c) continue;
@@ -739,7 +976,7 @@
       let best = null, bd = 1e12;
       G.roads.forEach((r, ri) => { if (r.k > 6) return; r.p.forEach(([x, y], i) => { const d = x * x + y * y; if (d < bd && i < r.p.length - 1) { bd = d; best = [ri, i]; } }); });
       const r = G.roads[best[0]], A = r.p[best[1]], B = r.p[best[1] + 1], a = Math.atan2(B[1] - A[1], B[0] - A[0]);
-      const off = r.o ? 0 : Math.min(r.w / 4, 3.2);
+      const off = r.o ? 0 : Math.min(r.cw / 4, 3.2);
       me = { fuel: 1, x: (A[0] + B[0]) / 2 - Math.sin(a) * off, y: (A[1] + B[1]) / 2 + Math.cos(a) * off, a, vf: 0, vr: 0, steer: 0, len: VEH[veh].len, wid: VEH[veh].wid, type: VEH[veh].t, V: VEH[veh], c: myColor(), inLight: null, dmg: 0, hits: [] };
       camX = me.x; camY = me.y;
     }
@@ -785,13 +1022,13 @@
       // marcas de frenada
       if ((Math.abs(me.vr) > 2 || (brk && me.vf > 8)) && skids.length < 900) for (const s of [-0.75, 0.75]) skids.push([me.x - Math.cos(me.a) * 1.4 - Math.sin(me.a) * s, me.y - Math.sin(me.a) * 1.4 + Math.cos(me.a) * s]);
       // por la calle y el borde de la vereda (hasta SIDE metros pasado el cordón); en la vereda se va más lento
-      { const q = nearestRoad(me.x, me.y); if (q && q.d > 0 && !lotAt(me.x, me.y) && Math.abs(me.vf) > 6) me.vf *= 1 - dt * 0.8; }
+      { const q = nearestRoad(me.x, me.y); if (q && q.d > 0 && !lotAt(me.x, me.y) && !homeLot(me.x, me.y) && Math.abs(me.vf) > 6) me.vf *= 1 - dt * 0.8; }
       // se revisan las 4 puntas del auto: ninguna puede pasar el cordón
       let worst = 0, nx = 0, ny = 0;
       const cA = Math.cos(me.a), sA = Math.sin(me.a);
       for (const [fx, fy] of [[me.len / 2, me.wid / 2], [me.len / 2, -me.wid / 2], [-me.len / 2, me.wid / 2], [-me.len / 2, -me.wid / 2]]) {
         const qx = me.x + cA * fx - sA * fy, qy = me.y + sA * fx + cA * fy;
-        if (lotAt(qx, qy)) continue;
+        if (lotAt(qx, qy) || homeLot(qx, qy)) continue;
         const q = nearestRoad(qx, qy);
         if (!q) { worst = 99; break; }
         if (q.d > worst) { worst = q.d; const dd = Math.hypot(qx - q.px, qy - q.py) || 0.001; nx = (qx - q.px) / dd; ny = (qy - q.py) / dd; }
@@ -834,6 +1071,17 @@
             const [ox, oy] = toLocal(c, me.x, me.y); hurt(c, sp, ox * 3, oy * 3); if (!c.racer) { c.haz = true; c.hazT = 6; } else c.v *= 0.5;
           }
           me.vf *= 0.35; if (!c.racer) c.v = 0;
+        }
+      }
+      // choques con autos estacionados (rectángulo contra rectángulo)
+      for (const c of G.parkedNear(me.x, me.y, 9)) {
+        if (Math.abs(c.x - me.x) > 8 || Math.abs(c.y - me.y) > 8) continue;
+        const inRect = (o, x, y, m) => { const [lx, ly] = toLocal(o, x, y); return Math.abs(lx) < o.len / 2 - m && Math.abs(ly) < o.wid / 2 - m; };
+        const cornersOf = (o) => { const cc = Math.cos(o.a), ss = Math.sin(o.a); return [[1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]].map(([a2, b2]) => [o.x + cc * a2 * o.len / 2 - ss * b2 * o.wid / 2, o.y + ss * a2 * o.len / 2 + cc * b2 * o.wid / 2]); };
+        if (cornersOf(me).some(([x, y]) => inRect(c, x, y, 0.05)) || cornersOf(c).some(([x, y]) => inRect(me, x, y, 0.05))) {
+          me.x = px; me.y = py;
+          if (Math.abs(me.vf) > 3 && clock - (c.hitT || -9) > 0.8) { crash('¡Le pegaste a un auto estacionado!'); c.hitT = clock; const sp = Math.abs(me.vf); const [lx, ly] = toLocal(me, c.x, c.y); hurt(me, sp, lx * 3, ly * 3); const [ox, oy] = toLocal(c, me.x, me.y); hurt(c, sp, ox * 3, oy * 3); c.haz = true; c.hazT = 8; }
+          me.vf *= -0.2; me.vr = 0; break;
         }
       }
       // semáforos: ¿cruzaste en rojo?
@@ -896,6 +1144,8 @@
         if (cars.length < want) spawnCar(true);
       }
       if (mode === 'entregas') jobStep(dt);
+      if (!race) homeStep(dt);
+      for (const c of G.parkedNear(me.x, me.y, 40)) if (c.hazT > 0) { c.hazT -= dt; if (c.hazT <= 0) c.haz = false; }
       if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.className = 'br-toast'; }
       const spd = Math.abs(me.vf);
       // zoom: automático según la velocidad, multiplicado por el que elegís (analógico derecho, rueda del mouse o + / -)
@@ -1278,10 +1528,12 @@
         ctx.fillStyle = 'rgba(210,225,240,.6)'; for (const sp2 of splash) { ctx.beginPath(); ctx.arc(sp2[0], sp2[1], 0.12 + (0.5 - sp2[4]) * 0.3, 0, TAU); ctx.fill(); }
       }
       if (job) { const p = 1 + Math.sin(clock * 5) * 0.15; ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(job.x, job.y, 12 * p, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,214,10,.18)'; ctx.fill(); }
+      { const pr = Math.max(vx1 - vx0, vy1 - vy0) / 2 + 8; for (const c of G.parkedNear((vx0 + vx1) / 2, (vy0 + vy1) / 2, pr)) if (c.x > vx0 - 8 && c.x < vx1 + 8 && c.y > vy0 - 8 && c.y < vy1 + 8) drawCar(c); }
       for (const c of cars) if (c.x > vx0 - 12 && c.x < vx1 + 12 && c.y > vy0 - 12 && c.y < vy1 + 12) drawCar(c);
       if (!race) findMyLight(); else myLight = null;
       if (race) drawRaceTrack();
       drawCar(me, true);
+      if (home && Math.abs(home.ex - camX) < hwv + 30 && Math.abs(home.ey - camY) < hhv + 30) drawHome();
       // humo del motor cuando el auto está muy golpeado
       if ((me.dmg || 0) > 0.55 && state === 'run') {
         if (smoke.length < 60 && Math.random() < (me.dmg - 0.45) * 0.7) { const fx = me.x + Math.cos(me.a) * me.len * 0.32, fy = me.y + Math.sin(me.a) * me.len * 0.32; smoke.push([fx - Math.cos(me.a) * 0.6, fy - Math.sin(me.a) * 0.6, (Math.random() - 0.5) * 0.8 - Math.cos(me.a) * me.vf * 0.15, (Math.random() - 0.5) * 0.8 - Math.sin(me.a) * me.vf * 0.15, 1.6]); }
@@ -1334,6 +1586,19 @@
           ctx.restore();
         }
       }
+      // flecha azul hacia Casa (cuando está lejos)
+      if (home && !race) {
+        const [hx, hy] = homeW(HL.gu, 2), dist = Math.hypot(hx - me.x, hy - me.y);
+        const [dx, dy] = rotV(hx - camX, hy - camY), sx = W / 2 + dx * zoom, sy = Hh / 2 + dy * zoom;
+        if (dist > 60 && (sx < 30 || sy < 30 || sx > W - 30 || sy > Hh - 30)) {
+          const a = Math.atan2(dy, dx), r = Math.min(W, Hh) / 2 - 104, px = W / 2 + Math.cos(a) * r, py = Hh / 2 + Math.sin(a) * r;
+          ctx.save(); ctx.translate(px, py); ctx.globalAlpha = 0.85;
+          ctx.save(); ctx.rotate(a); ctx.fillStyle = '#2f6fd1'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-7, -10); ctx.lineTo(-3, 0); ctx.lineTo(-7, 10); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+          const t = `🏠 ${dist < 1000 ? Math.round(dist / 10) * 10 + ' m' : (dist / 1000).toFixed(1) + ' km'}`; ctx.font = '700 11px system-ui'; const tw = ctx.measureText(t).width + 12, lx = -Math.cos(a) * 28 - tw / 2, ly = -Math.sin(a) * 24 - 9;
+          ctx.fillStyle = 'rgba(16,20,28,.8)'; ctx.beginPath(); ctx.roundRect(lx, ly, tw, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t, lx + tw / 2, ly + 9.5);
+          ctx.restore();
+        }
+      }
       // radar redondo estilo GPS: gira con el auto (siempre para adelante es arriba)
       if (G) {
         const R = 74, cx = W - R - 18, cy = Hh - R - 18, RANGE = 260, k = R / RANGE;
@@ -1357,6 +1622,7 @@
         ctx.fillStyle = wx === 'dia' || wx === 'lluvia' ? 'rgba(50,56,66,.85)' : 'rgba(255,255,255,.8)';
         for (const r of near.roads) { if (!r.o || r.k >= 7) continue; for (let i = 0; i < r.p.length - 1; i++) { const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], Ls = Math.hypot(bx - ax, by - ay); if (Ls < 30) continue; const an = Math.atan2(by - ay, bx - ax) + (r.o === -1 ? Math.PI : 0); for (let t = 0.5 / Math.max(1, Math.round(Ls / 90)); t < 1; t += 1 / Math.max(1, Math.round(Ls / 90))) { ctx.save(); ctx.translate(ax + (bx - ax) * t, ay + (by - ay) * t); ctx.rotate(an); ctx.scale(1 / k, 1 / k); ctx.beginPath(); ctx.moveTo(4.5, 0); ctx.lineTo(-3, -3.6); ctx.lineTo(-1, 0); ctx.lineTo(-3, 3.6); ctx.closePath(); ctx.fill(); ctx.restore(); } } }
         for (const st of G.stations) { ctx.fillStyle = '#1f9d55'; ctx.beginPath(); ctx.arc(st.rx, st.ry, 7 / k, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = `${8 / k}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.save(); ctx.translate(st.rx, st.ry); ctx.rotate(me.a + Math.PI / 2); ctx.fillText('⛽', 0, 0.5 / k); ctx.restore(); }
+        if (home) { const [hx, hy] = homeW(1, 9); ctx.fillStyle = '#2f6fd1'; ctx.beginPath(); ctx.arc(hx, hy, 7 / k, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = `${8 / k}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.save(); ctx.translate(hx, hy); ctx.rotate(me.a + Math.PI / 2); ctx.fillText('🏠', 0, 0.5 / k); ctx.restore(); }
         if (job) { ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.arc(job.x, job.y, 6 / k, 0, TAU); ctx.fill(); }
         ctx.restore();
         // destino fuera del radar: flechita en el borde
@@ -1454,9 +1720,9 @@
       if (!m) { msg.hidden = true; return menu('No pude abrir ese mapa. Bajalo de nuevo.'); }
       await new Promise(r => setTimeout(r, 30));
       G = prepare(m); tiles.clear(); mapId = id; const s = H.get(); s.map = id; H.set(s);
-      buildMini(); startCar(); autoLights(); cars = []; skids = []; stats = { red: 0, crash: 0, done: 0, pts: 0 }; job = null;
+      buildMini(); buildHome(); startCar(); homeStart(); autoLights(); cars = []; skids = []; stats = { red: 0, crash: 0, done: 0, pts: 0 }; job = null;
       for (let i = 0; i < 30; i++) spawnCar(false);
-      window.__barrioG = G; window.__barrio = { raw: () => cars, cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), G: () => G, road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y), race: () => race };
+      window.__barrioG = G; window.__barrio = { raw: () => cars, cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), G: () => G, road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y), race: () => race, home: () => home, homeIn: () => homeIn(), st: () => state, cam: () => [camX, camY, zoom, toastT] };
       msg.hidden = true; closeOver(root); state = 'run'; fit();
       H.status([m.name.split(',').slice(0, 2).join(','), `${G.lights.size} semáforos`]);
       if (mode === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras');
@@ -1822,7 +2088,7 @@
       c.P += c.v * dt;
       if (!c.fin && c.P >= R.total) c.fin = R.t;
       c.lc = c.lc == null ? c.lane : c.lc + (c.lane - c.lc) * Math.min(1, dt * 1.4);
-      const [x, y, ux, uy] = pathAt(path, c.P), nr = nearestRoad(x, y), half = nr ? Math.max(0.4, nr.r.w / 2 - 1.3) : 1.5, ln = Math.max(-half, Math.min(half, c.lc));
+      const [x, y, ux, uy] = pathAt(path, c.P), nr = nearestRoad(x, y), half = nr ? Math.max(0.4, (nr.r.cw || nr.r.w) / 2 - 1.3) : 1.5, ln = Math.max(-half, Math.min(half, c.lc));
       const tx = x - uy * ln, ty = y + ux * ln, kk = 1 - Math.exp(-dt * 8), ox = c.x, oy = c.y;
       c.x += (tx - c.x) * kk; c.y += (ty - c.y) * kk;
       const mvx = c.x - ox, mvy = c.y - oy; if (mvx * mvx + mvy * mvy > 1e-5) c.a += angDiff(Math.atan2(mvy, mvx) - c.a) * Math.min(1, dt * 10); else c.a += angDiff(Math.atan2(uy, ux) - c.a) * Math.min(1, dt * 4);
@@ -1924,6 +2190,14 @@
       row('Tablero', pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); })),
       row('Cámara', pick('Cámara', Object.entries(CAMS), camMode, (v) => { camMode = v; const st = H.get(); st.cam = v; H.set(st); })),
       h('div', { class: 'brr-row' }, dmgBtn, sndBtn),
+      h('div', { class: 'brr-row' },
+        btn('🏠 Volver a Casa', () => { if (!G || !me || race) return; if (!home) return say('Todavía no hay una Casa en este mapa'); if (!homeStart()) { const [x, y] = homeW(HL.gu, -4); me.x = x; me.y = y; me.a = Math.atan2(home.uy, home.ux); me.vf = me.vr = 0; say(`El ${VEH[veh].n.toLowerCase()} no entra en el garaje: quedaste en la puerta`); } else say('🏠 Estás en el garaje de Casa'); toggleOpts(false); }),
+        btn('📍 Mudar la Casa acá', () => {
+          if (!G || !me) return;
+          const H0 = homeSpot(me.x, me.y); if (!H0) return say('No encontré lugar para la Casa cerca: probá en otra cuadra', true);
+          const st = H.get(); st.casa = st.casa || {}; st.casa[mapId] = { ri: H0.ri, i: H0.i, t: +H0.t.toFixed(1), sd: H0.sd }; H.set(st);
+          buildHome(); say('🏠 Tu Casa ahora está en ' + (G.roads[H0.ri].n || 'esta cuadra')); toggleOpts(false);
+        })),
       btn('Listo', () => toggleOpts(false), 'primary'));
     root.append(optPanel);
     function toggleOpts(v) { const on = v == null ? optPanel.style.display === 'none' : v; optPanel.style.display = on ? '' : 'none'; }
@@ -1950,7 +2224,7 @@
     return {
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = myColor(id); },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · F pantalla completa · P pausa. Podés ir por el borde de la vereda, más despacio. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · F pantalla completa · P pausa. Podés ir por el borde de la vereda, más despacio. Tu Casa tiene garaje: entrá despacio, quedate quieto adentro y el auto queda guardado (con el tanque lleno y arreglado); en Opciones podés volver a Casa o mudarla a donde estás. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };
