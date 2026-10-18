@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const BM = window.BaseMini; if (!BM || !BM.register) return;
-  const { h, seg, btn, overlay } = BM.util;
+  const { h, seg, btn, overlay } = BM.util; const confetti = BM.util.confetti || (() => {});
   const pick = BM.util.pick || ((l, o, v, f) => seg(o, v, f));
   const closeOver = (root) => { const o = root.querySelector('.mg-over'); if (o) o.remove(); };
   const TAU = Math.PI * 2;
@@ -220,7 +220,7 @@
     const hud = h('div', { class: 'mv-hud' }), msg = h('div', { class: 'sn-msg' }), toastEl = h('div', { class: 'br-toast' });
     root.append(hud, msg, toastEl); msg.hidden = true;
     root.addEventListener('pointerdown', () => { try { SND.init(); } catch {} });
-    cv.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(zoomMul * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+    cv.addEventListener('wheel', (e) => { e.preventDefault(); if (state === 'edit') return editWheel(e); setZoom(zoomMul * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
     const ctx = cv.getContext('2d');
     let W = 800, Hh = 500, lastSz = '', rf = 0;
     const fit = () => { W = Math.max(320, root.clientWidth); Hh = Math.max(240, root.clientHeight); const d = Math.min(2, devicePixelRatio || 1); cv.width = W * d; cv.height = Hh * d; cv.style.width = W + 'px'; cv.style.height = Hh + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); DPR = d; };
@@ -247,6 +247,9 @@
     const DASH = { clasico: 'Tablero clásico', radar: 'Alrededor del radar', digital: 'Digital chico' };
     let dash = DASH[H.get().dash] ? H.get().dash : 'clasico';
     let stats = { red: 0, crash: 0, done: 0, pts: 0 }, job = null, zoom = 5, camX = 0, camY = 0, mini = null;
+    const CAMS = { norte: 'Norte arriba', gira: 'Gira con el auto' };
+    let camMode = CAMS[H.get().cam] ? H.get().cam : 'norte', camRot = 0;
+    const rotV = (x, y) => { const c = Math.cos(camRot), s2 = Math.sin(camRot); return [x * c - y * s2, x * s2 + y * c]; };
 
     // ---------- mosaicos del mapa (se dibujan una vez y se reusan) ----------
     const TILE = 64, RES = 8, tiles = new Map();
@@ -719,7 +722,7 @@
       const empty = me.fuel <= 0;
       const vmx = V.vmax * (1 - (me.dmg || 0) * 0.4);
       if (thr && !empty) a += me.vf < -0.3 ? 9 : V.acc * (1 - (me.dmg || 0) * 0.3) * Math.max(0, 1 - me.vf / vmx);
-      me.fuel = Math.max(0, me.fuel - (Math.abs(me.vf) * dt * (thr ? 1.25 : 0.7) + dt * 0.4) / (V.tank || 7000));
+      if (!race) me.fuel = Math.max(0, me.fuel - (Math.abs(me.vf) * dt * (thr ? 1.25 : 0.7) + dt * 0.4) / (V.tank || 7000));
       if (empty && fuelWarn <= 0) { say('⛽ ¡Te quedaste sin nafta! R te lleva a la estación más cercana', true); fuelWarn = 6; }
       else if (me.fuel < 0.15 && fuelWarn <= 0) { say('⛽ Te queda poca nafta: buscá una estación (en el radar)', true); fuelWarn = 20; }
       fuelWarn -= dt;
@@ -770,7 +773,7 @@
       }
       // contramano: calle de mano única al revés, o carril izquierdo en doble mano (no cuenta en los cruces)
       { const q = nearestRoad(me.x, me.y); let wrong = false;
-        if (q && q.d < 0 && me.vf > 2.5 && q.r.k < 7 && !lotAt(me.x, me.y) && !G.nearCorner(me.x, me.y, q.r.w * 0.6 + 7)) {
+        if (!race && q && q.d < 0 && me.vf > 2.5 && q.r.k < 7 && !lotAt(me.x, me.y) && !G.nearCorner(me.x, me.y, q.r.w * 0.6 + 7)) {
           const along = Math.cos(me.a - q.ang);
           if (q.r.o) { if ((q.r.o === 1 && along < -0.5) || (q.r.o === -1 && along > 0.5)) { wrong = true; wrongKind = 'Esta calle es de mano única'; } }
           else if (q.r.w >= 8) { const lat = (me.x - q.px) * -Math.sin(q.ang) + (me.y - q.py) * Math.cos(q.ang); if ((along > 0.5 && lat < -1) || (along < -0.5 && lat > 1)) { wrong = true; wrongKind = 'Vas por el carril contrario: andá por la derecha'; } }
@@ -792,15 +795,15 @@
           if (Math.abs(me.vf) > 3 && clock - (c.hitT || -9) > 0.8) {
             crash('¡Choque!'); c.hitT = clock; const sp = Math.abs(me.vf);
             const [lx, ly] = toLocal(me, c.x, c.y); hurt(me, sp, lx * 3, ly * 3);
-            const [ox, oy] = toLocal(c, me.x, me.y); hurt(c, sp, ox * 3, oy * 3); c.haz = true; c.hazT = 6;
+            const [ox, oy] = toLocal(c, me.x, me.y); hurt(c, sp, ox * 3, oy * 3); if (!c.racer) { c.haz = true; c.hazT = 6; } else c.v *= 0.5;
           }
-          me.vf *= 0.35; c.v = 0;
+          me.vf *= 0.35; if (!c.racer) c.v = 0;
         }
       }
       // semáforos: ¿cruzaste en rojo?
       let inside = null;
       for (const L of G.lights.values()) { if (Math.abs(L.x - me.x) < L.maxW && Math.abs(L.y - me.y) < L.maxW && Math.hypot(L.x - me.x, L.y - me.y) < L.maxW / 2 + 1) { inside = L; break; } }
-      if (inside && me.inLight !== inside && me.vf > 2) {
+      if (inside && me.inLight !== inside && me.vf > 2 && !race) {
         const ap = approachOf(inside, Math.cos(me.a), Math.sin(me.a));
         if (ap && !ap.inner && lightState(inside, ap.g) === 'r') { stats.red++; say('🚦 ¡Cruzaste en rojo!', true); SND.blip(180, 0.35, 'sawtooth', 0.12); SND.blip(150, 0.45, 'sawtooth', 0.1); if (job) job.red++; }
       }
@@ -843,11 +846,15 @@
     function step(dt) {
       clock += dt;
       { const ph = (clock * 2.6) % 1 < 0.5; if (ph !== tickPh) { tickPh = ph; if (blink.l || blink.r || blink.haz) SND.blip(ph ? 2100 : 1500, 0.025, 'square', 0.05); } }
+      if (race && race.t < 0) { keys.up = keys.down = false; }
       carStep(dt);
-      for (const c of cars) aiStep(c, dt);
-      cars = cars.filter(c => !c.dead && c.stuck < 40 && Math.hypot(c.x - me.x, c.y - me.y) < 520);
-      const want = Math.min(75, 32 + Math.round(G.roads.length / 20));
-      if (cars.length < want) spawnCar(true);
+      if (race) raceStep(dt);
+      else {
+        for (const c of cars) aiStep(c, dt);
+        cars = cars.filter(c => !c.dead && c.stuck < 40 && Math.hypot(c.x - me.x, c.y - me.y) < 520);
+        const want = Math.min(75, 32 + Math.round(G.roads.length / 20));
+        if (cars.length < want) spawnCar(true);
+      }
       if (mode === 'entregas') jobStep(dt);
       if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.className = 'br-toast'; }
       const spd = Math.abs(me.vf);
@@ -858,6 +865,7 @@
       zoom += (z - zoom) * Math.min(1, dt * 1.5);
       camX += (me.x + Math.cos(me.a) * me.vf * 0.9 - camX) * Math.min(1, dt * 3);
       camY += (me.y + Math.sin(me.a) * me.vf * 0.9 - camY) * Math.min(1, dt * 3);
+      const tr = camMode === 'gira' ? -me.a - Math.PI / 2 : 0; camRot += angDiff(tr - camRot) * Math.min(1, dt * 3.2);
     }
     // ---------- dibujos de los vehículos (vista desde arriba, con brillo y sombras) ----------
     const SPR = new Map(), PX = 22;
@@ -973,7 +981,7 @@
     }
     function drawLights() {
       for (const L of G.lights.values()) {
-        if (Math.abs(L.x - camX) > W / zoom || Math.abs(L.y - camY) > Hh / zoom) continue;
+        if (Math.abs(L.x - camX) > Math.max(W, Hh) / zoom || Math.abs(L.y - camY) > Math.max(W, Hh) / zoom) continue;
         for (const a of L.apps) {
           if (!a.inbound || a.inner) continue;
           const st = lightState(L, a.g);
@@ -1043,7 +1051,7 @@
       ctx.fillStyle = '#fff'; ctx.font = '800 12px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(myLight.dist < 1 ? 'Cruce' : `${d} m`, x + w / 2, y + hh + 17.5);
       ctx.restore();
     }
-    const toScr = (x, y) => [W / 2 + (x - camX) * zoom, Hh / 2 + (y - camY) * zoom];
+    const toScr = (x, y) => { const [dx, dy] = rotV(x - camX, y - camY); return [W / 2 + dx * zoom, Hh / 2 + dy * zoom]; };
     // elige la esquina del cruce donde el cartel no pisa la calle (y distinta de la del otro cartel)
     function placeSign(s2) {
       const ca = Math.cos(s2.ang), sa = Math.sin(s2.ang); let best = null;
@@ -1071,8 +1079,9 @@
         const [px, py] = toScr(s2.x, s2.y); if (px < -260 || py < -260 || px > W + 260 || py > Hh + 260) continue;
         ctx.font = `800 ${(11.5 * sc).toFixed(1)}px "Arial Narrow", "Roboto Condensed", system-ui, sans-serif`;
         const nm = s2.name.toUpperCase(), t = nm.length > 26 ? nm.slice(0, 25) + '…' : nm, tw = ctx.measureText(t).width, aw = 25 * sc, w = tw + 18 * sc + aw, hh = 20 * sc;
-        const cx = px + s2.ux * (w / 2 + 3) + s2.nx * (hh / 2 + 1), cy = py + s2.uy * (w / 2 + 3) + s2.ny * (hh / 2 + 1);
-        let ang = Math.atan2(s2.uy, s2.ux); if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+        const [sux, suy] = rotV(s2.ux, s2.uy), [snx, sny] = rotV(s2.nx, s2.ny);
+        const cx = px + sux * (w / 2 + 3) + snx * (hh / 2 + 1), cy = py + suy * (w / 2 + 3) + sny * (hh / 2 + 1);
+        let ang = Math.atan2(suy, sux); if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
         const ex = Math.abs(Math.cos(ang)) * w / 2 + Math.abs(Math.sin(ang)) * hh / 2, ey = Math.abs(Math.sin(ang)) * w / 2 + Math.abs(Math.cos(ang)) * hh / 2;
         const box = [cx - ex, cy - ey, cx + ex, cy + ey];
         if (placed.some(r => box[0] < r[2] + 3 && box[2] > r[0] - 3 && box[1] < r[3] + 3 && box[3] > r[1] - 3)) continue;
@@ -1091,7 +1100,7 @@
         const mx = sx + aw / 2; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6;
         const head = (dir) => { ctx.beginPath(); ctx.moveTo(mx + dir * 8, 0); ctx.lineTo(mx + dir * 3.5, -3.6); ctx.lineTo(mx + dir * 3.5, 3.6); ctx.closePath(); ctx.fill(); };
         if (s2.flow == null) { ctx.beginPath(); ctx.moveTo(mx - 5, 0); ctx.lineTo(mx + 5, 0); ctx.stroke(); head(1); head(-1); }
-        else { const rel = Math.cos(s2.flow - ang) >= 0 ? 1 : -1; ctx.beginPath(); ctx.moveTo(mx - rel * 8, 0); ctx.lineTo(mx + rel * 4, 0); ctx.stroke(); head(rel); }
+        else { const rel = Math.cos(s2.flow + camRot - ang) >= 0 ? 1 : -1; ctx.beginPath(); ctx.moveTo(mx - rel * 8, 0); ctx.lineTo(mx + rel * 4, 0); ctx.stroke(); head(rel); }
         ctx.restore();
       }
       ctx.restore();
@@ -1107,7 +1116,7 @@
       const beam = (c, len, a) => {
         const [x, y] = toScr(c.x + Math.cos(c.a) * c.len / 2, c.y + Math.sin(c.a) * c.len / 2), L = len * zoom;
         const gr = g.createRadialGradient(x, y, 0, x, y, L); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
-        g.fillStyle = gr; g.beginPath(); g.moveTo(x, y); g.arc(x, y, L, c.a - 0.42, c.a + 0.42); g.closePath(); g.fill();
+        g.fillStyle = gr; g.beginPath(); g.moveTo(x, y); g.arc(x, y, L, c.a + camRot - 0.42, c.a + camRot + 0.42); g.closePath(); g.fill();
       };
       for (const [lx, ly] of G.lamps) { const [x, y] = toScr(lx, ly); if (x > -200 && y > -200 && x < W + 200 && y < Hh + 200) glow(x, y, 19 * zoom, 0.8); }
       for (const c of cars) { const [x, y] = toScr(c.x, c.y); if (x > -300 && y > -300 && x < W + 300 && y < Hh + 300) beam(c, 22, 0.75); }
@@ -1141,8 +1150,9 @@
       if (!G || !me) return;
       ctx.fillStyle = '#7f8a63'; ctx.fillRect(0, 0, W, Hh);
       ctx.save();
-      ctx.translate(W / 2, Hh / 2); ctx.scale(zoom, zoom); ctx.translate(-camX, -camY);
-      const vx0 = camX - W / 2 / zoom, vy0 = camY - Hh / 2 / zoom, vx1 = camX + W / 2 / zoom, vy1 = camY + Hh / 2 / zoom;
+      ctx.translate(W / 2, Hh / 2); ctx.rotate(camRot); ctx.scale(zoom, zoom); ctx.translate(-camX, -camY);
+      const rot = Math.abs(camRot) > 0.005, hwv = rot ? Math.hypot(W, Hh) / 2 / zoom : W / 2 / zoom, hhv = rot ? Math.hypot(W, Hh) / 2 / zoom : Hh / 2 / zoom;
+      const vx0 = camX - hwv, vy0 = camY - hhv, vx1 = camX + hwv, vy1 = camY + hhv;
       ctx.imageSmoothingEnabled = true;
       for (let tx = Math.floor(vx0 / TILE); tx <= Math.floor(vx1 / TILE); tx++) for (let ty = Math.floor(vy0 / TILE); ty <= Math.floor(vy1 / TILE); ty++) ctx.drawImage(tile(tx, ty), tx * TILE, ty * TILE, TILE, TILE);
       ctx.fillStyle = 'rgba(20,20,20,.35)'; for (const [x, y] of skids) ctx.fillRect(x - 0.15, y - 0.15, 0.3, 0.3);
@@ -1164,7 +1174,8 @@
       }
       if (job) { const p = 1 + Math.sin(clock * 5) * 0.15; ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(job.x, job.y, 12 * p, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,214,10,.18)'; ctx.fill(); }
       for (const c of cars) if (c.x > vx0 - 12 && c.x < vx1 + 12 && c.y > vy0 - 12 && c.y < vy1 + 12) drawCar(c);
-      findMyLight();
+      if (!race) findMyLight(); else myLight = null;
+      if (race) drawRaceTrack();
       drawCar(me, true);
       // humo del motor cuando el auto está muy golpeado
       if ((me.dmg || 0) > 0.55 && state === 'run') {
@@ -1173,9 +1184,9 @@
       for (const p2 of smoke) { p2[0] += p2[2] * 0.016; p2[1] += p2[3] * 0.016; p2[4] -= 0.016; }
       smoke = smoke.filter(p2 => p2[4] > 0);
       for (const p2 of smoke) { const t2 = 1.6 - p2[4]; ctx.fillStyle = `rgba(${me.dmg > 0.85 ? 40 : 120},${me.dmg > 0.85 ? 40 : 120},${me.dmg > 0.85 ? 44 : 124},${0.28 * Math.min(1, t2 * 3) * p2[4] / 1.6})`; ctx.beginPath(); ctx.arc(p2[0], p2[1], 0.25 + t2 * 1.5, 0, TAU); ctx.fill(); }
-      drawLights();
+      if (!race) drawLights();
       ctx.restore();
-      if (!isNight() && lights !== 'off') { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const [x, y] = toScr(me.x + Math.cos(me.a) * me.len / 2, me.y + Math.sin(me.a) * me.len / 2), Lb = (lights === 'high' ? 40 : 24) * zoom; const gr = ctx.createRadialGradient(x, y, 0, x, y, Lb); gr.addColorStop(0, 'rgba(255,250,220,.13)'); gr.addColorStop(1, 'rgba(255,250,220,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, Lb, me.a - 0.4, me.a + 0.4); ctx.closePath(); ctx.fill(); ctx.restore(); }
+      if (!isNight() && lights !== 'off') { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const [x, y] = toScr(me.x + Math.cos(me.a) * me.len / 2, me.y + Math.sin(me.a) * me.len / 2), Lb = (lights === 'high' ? 40 : 24) * zoom; const gr = ctx.createRadialGradient(x, y, 0, x, y, Lb); gr.addColorStop(0, 'rgba(255,250,220,.13)'); gr.addColorStop(1, 'rgba(255,250,220,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, Lb, me.a + camRot - 0.4, me.a + camRot + 0.4); ctx.closePath(); ctx.fill(); ctx.restore(); }
       if (isNight()) drawNight();
       if (isRain()) drawRain();
       // viñeta suave en los bordes
@@ -1197,7 +1208,7 @@
       }
       // flecha hacia la entrega
       if (job) {
-        const dx = job.x - camX, dy = job.y - camY, sx = W / 2 + dx * zoom, sy = Hh / 2 + dy * zoom;
+        const [dx, dy] = rotV(job.x - camX, job.y - camY), sx = W / 2 + dx * zoom, sy = Hh / 2 + dy * zoom;
         if (sx < 20 || sy < 20 || sx > W - 20 || sy > Hh - 20) {
           const a = Math.atan2(dy, dx), r = Math.min(W, Hh) / 2 - 34;
           ctx.save(); ctx.translate(W / 2 + Math.cos(a) * r, Hh / 2 + Math.sin(a) * r); ctx.rotate(a);
@@ -1205,10 +1216,10 @@
         }
       }
       // flecha verde hacia la estación de servicio más cercana (más visible con poca nafta)
-      if (G.stations.length) {
+      if (G.stations.length && !race) {
         let st = null, bd = 1e12; for (const s3 of G.stations) { const d = (s3.rx - me.x) ** 2 + (s3.ry - me.y) ** 2; if (d < bd) { bd = d; st = s3; } }
         const dist = Math.sqrt(bd), low = me.fuel < 0.3 || (me.dmg || 0) > 0.5;
-        const dx = st.rx - camX, dy = st.ry - camY, sx = W / 2 + dx * zoom, sy = Hh / 2 + dy * zoom;
+        const [dx, dy] = rotV(st.rx - camX, st.ry - camY), sx = W / 2 + dx * zoom, sy = Hh / 2 + dy * zoom;
         if (sx < 30 || sy < 30 || sx > W - 30 || sy > Hh - 30) {
           const a = Math.atan2(dy, dx), r = Math.min(W, Hh) / 2 - (low ? 60 : 64), px = W / 2 + Math.cos(a) * r, py = Hh / 2 + Math.sin(a) * r, pul = low ? 1 + Math.sin(clock * 6) * 0.12 : 1;
           ctx.save(); ctx.translate(px, py); ctx.globalAlpha = low ? 1 : 0.8;
@@ -1314,7 +1325,8 @@
       const nr = nearestRoad(me.x, me.y), street = nr && nr.d < 4 && nr.r.n ? nr.r.n : '';
       const kmh = Math.round(Math.abs(me.vf) * 3.6);
       let h2 = '';
-      if (street) { const fl = nr.r.o ? (nr.r.o === 1 ? nr.ang : nr.ang + Math.PI) : null; h2 += `<span>📍 ${street.replace(/</g, '')}${fl == null ? ' <small style="opacity:.7">· doble mano</small>' : ` <b style="display:inline-block;transform:rotate(${fl.toFixed(2)}rad);color:#ffd60a">➜</b> <small style="opacity:.7">mano única</small>`}</span>`; }
+      if (street) { const fl = nr.r.o ? (nr.r.o === 1 ? nr.ang : nr.ang + Math.PI) : null; h2 += `<span>📍 ${street.replace(/</g, '')}${fl == null ? ' <small style="opacity:.7">· doble mano</small>' : ` <b style="display:inline-block;transform:rotate(${(fl + camRot).toFixed(2)}rad);color:#ffd60a">➜</b> <small style="opacity:.7">mano única</small>`}</span>`; }
+      if (race) { h2 += raceHud(); hud.innerHTML = h2; return; }
       if (mode === 'entregas' && job) h2 += `<span>📦 ${job.street.replace(/</g, '')} · ${(Math.hypot(job.x - me.x, job.y - me.y) / 1000).toFixed(2)} km · ${Math.max(0, Math.ceil(job.time))} s</span>`;
       h2 += `<span>🚦 ${stats.red}</span><span>💥 ${stats.crash}</span>`;
       if (me.dmg > 0.005) h2 += `<span style="color:${me.dmg > 0.6 ? '#ff8a80' : me.dmg > 0.3 ? '#ffd27a' : '#fff'}">🔧 Daños ${Math.round(me.dmg * 100)}%${repairing ? ' · reparando…' : ''}</span>`;
@@ -1323,7 +1335,8 @@
     }
     function frame(t) {
       const dt = Math.min(0.05, lastT ? (t - lastT) / 1000 : 0.016); lastT = t;
-      if (state === 'run') { step(dt); draw(); hudPaint(); }
+      if (state === 'run') { step(dt); draw(); hudPaint(); if (race) drawRaceOverlay(); }
+      else if (state === 'edit') drawEditor();
       SND.update(state === 'run');
       raf = requestAnimationFrame(frame);
     }
@@ -1338,13 +1351,14 @@
       G = prepare(m); tiles.clear(); mapId = id; const s = H.get(); s.map = id; H.set(s);
       buildMini(); startCar(); autoLights(); cars = []; skids = []; stats = { red: 0, crash: 0, done: 0, pts: 0 }; job = null;
       for (let i = 0; i < 30; i++) spawnCar(false);
-      window.__barrioG = G; window.__barrio = { raw: () => cars, cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), G: () => G, road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y) };
+      window.__barrioG = G; window.__barrio = { raw: () => cars, cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), G: () => G, road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y), race: () => race };
       msg.hidden = true; closeOver(root); state = 'run'; fit();
       H.status([m.name.split(',').slice(0, 2).join(','), `${G.lights.size} semáforos`]);
       if (mode === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras');
       run();
     }
     async function menu(err) {
+      if (race || edit) { race = null; edit = null; editPanel && editPanel.remove(); hud.style.display = ''; }
       state = 'menu'; cancelAnimationFrame(raf); closeOver(root);
       const box = h('div', { class: 'mg-over br-menu' });
       const card = h('div', { class: 'mg-over-card br-card' });
@@ -1451,6 +1465,315 @@
       };
     })();
 
+    // ---------- carreras: pistas trazadas por las calles de tu zona ----------
+    const RCSS = `
+.brr-panel{position:absolute;left:12px;top:12px;z-index:40;width:300px;max-height:calc(100% - 24px);overflow:auto;background:rgba(14,18,26,.94);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:9px;color:#fff;box-shadow:0 14px 40px -14px #000;font-size:13px}
+.brr-panel b{font-size:16px}.brr-panel small{color:#aab1c2;line-height:1.35}
+.brr-panel input{border:0;border-radius:9px;padding:8px 10px;background:rgba(255,255,255,.1);color:#fff;font:inherit}
+.brr-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.brr-len{font-weight:700;color:#ffd60a}
+.brr-tr{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center}
+.brr-tr .mg-btn{text-align:left}
+.brr-res{border-collapse:collapse;width:100%;font-size:14px}.brr-res td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.08)}.brr-res tr.me td{color:#ffd60a;font-weight:800}
+`;
+    if (!document.getElementById('st-barrio-race')) document.head.append(h('style', { id: 'st-barrio-race', text: RCSS }));
+    let race = null, edit = null, editPanel = null;
+    const DIFF = { facil: { n: 'Fácil', k: 0.74 }, normal: { n: 'Normal', k: 0.86 }, dificil: { n: 'Difícil', k: 0.98 } };
+    const raceOpts = { rivals: Math.min(5, Math.max(1, +H.get().rivals || 3)), diff: DIFF[H.get().rdiff] ? H.get().rdiff : 'normal' };
+    const RIV = [['Tito', '#1f5fbf', 'auto'], ['La Flaca', '#e3b21c', 'sport'], ['Ruso', '#2f8f4e', 'auto'], ['Pocho', '#7a3fbf', 'pickup'], ['Chiqui', '#d35400', 'sport']];
+    const fmtT = (t) => { t = Math.max(0, t); const m = Math.floor(t / 60), s2 = t - m * 60; return `${m}:${s2.toFixed(1).padStart(4, '0')}`; };
+    const myTracks = () => ((H.get().tracks || {})[mapId] || []);
+    function saveTracks(list) { const s = H.get(); s.tracks = s.tracks || {}; s.tracks[mapId] = list; H.set(s); }
+    // esquina (o punto de calle) más cercana
+    function snapNode(x, y, maxD) {
+      let best = null, bd = maxD * maxD;
+      for (const r of G.inRect(x - maxD, y - maxD, x + maxD, y + maxD).roads) { if (r.k > 6) continue; r.p.forEach(([px, py], i) => { const d = (px - x) ** 2 + (py - y) ** 2 - (G.deg(r.nd[i]) >= 3 ? 40 : 0); if (d < bd) { bd = d; best = r.nd[i]; } }); }
+      return best;
+    }
+    // camino más corto por las calles entre dos esquinas (para la carrera las calles se cortan: no importa la mano)
+    function shortest(a, b) {
+      if (a === b) return [a];
+      const dist = new Map([[a, 0]]), prev = new Map(), heap = [[0, a]];
+      const push = (d, n) => { heap.push([d, n]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+      const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+      let it = 0;
+      while (heap.length && it++ < 400000) {
+        const [d, n] = pop(); if (n === b) break; if (d > (dist.get(n) ?? Infinity)) continue;
+        const l = G.links.get(n); if (!l) continue;
+        for (const [ri, i] of l) {
+          const r = G.roads[ri]; if (r.k > 6) continue;
+          for (const j of [i - 1, i + 1]) { if (j < 0 || j >= r.p.length) continue; const m = r.nd[j], nd2 = d + Math.hypot(r.p[j][0] - r.p[i][0], r.p[j][1] - r.p[i][1]); if (nd2 < (dist.get(m) ?? Infinity)) { dist.set(m, nd2); prev.set(m, n); push(nd2, m); } }
+        }
+      }
+      if (!prev.has(b)) return null;
+      const out = [b]; let n = b; while (n !== a) { n = prev.get(n); out.push(n); } return out.reverse();
+    }
+    function buildPath(wps, loop) {
+      if (wps.length < 2) return null;
+      const seq = loop && wps.length > 2 ? [...wps, wps[0]] : wps, nodes = [];
+      for (let k = 0; k < seq.length - 1; k++) { const sp = shortest(seq[k].n, seq[k + 1].n); if (!sp) return null; if (nodes.length) sp.shift(); nodes.push(...sp); }
+      const P = [];
+      for (const n of nodes) { const p = G.nodePos(n); if (!P.length || Math.hypot(p[0] - P[P.length - 1][0], p[1] - P[P.length - 1][1]) > 0.5) P.push([p[0], p[1]]); }
+      const lp = loop && wps.length > 2; if (lp && P.length > 2 && Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 0.6) P.pop();
+      if (P.length < 2) return null;
+      // en un circuito, la largada va en el medio de la primera recta larga (no justo en una esquina)
+      if (lp) { for (let i = 0; i < P.length; i++) { const A = P[i], B = P[(i + 1) % P.length], sl = Math.hypot(B[0] - A[0], B[1] - A[1]); if (sl > 45) { const M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]; const rot = [M, ...P.slice(i + 1), ...P.slice(0, i + 1)]; P.length = 0; P.push(...rot); break; } } }
+      const cum = [0]; for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
+      const L = lp ? cum[cum.length - 1] + Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) : cum[cum.length - 1];
+      return { pts: P, cum, L, loop: lp };
+    }
+    function pathAt(path, s) {
+      const { pts, cum, L, loop } = path, n = pts.length;
+      if (loop) s = ((s % L) + L) % L;
+      let lo = 0, hi = n - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (cum[mid] <= s) lo = mid; else hi = mid - 1; }
+      let i = lo; if (!loop && i >= n - 1) i = n - 2;
+      const A = pts[i], B = pts[(i + 1) % n], sl = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1, ux = (B[0] - A[0]) / sl, uy = (B[1] - A[1]) / sl, d = s - cum[i];
+      return [A[0] + ux * d, A[1] + uy * d, ux, uy];
+    }
+    function projPath(path, x, y, guess) {
+      const { pts, cum, L, loop } = path, n = pts.length; let best = null;
+      for (let i = 0; i < (loop ? n : n - 1); i++) {
+        const A = pts[i], B = pts[(i + 1) % n], dx = B[0] - A[0], dy = B[1] - A[1], L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - A[0]) * dx + (y - A[1]) * dy) / L2));
+        const d = Math.hypot(x - A[0] - dx * t, y - A[1] - dy * t), s = cum[i] + t * Math.sqrt(L2);
+        let ds = s - guess; if (loop) ds = ((ds % L) + L * 1.5) % L - L / 2;
+        const sc = d + Math.abs(ds) * 0.08;
+        if (!best || sc < best.sc) best = { sc, s, d, ds };
+      }
+      return best;
+    }
+    const lenTxt = (m) => m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`;
+    // ---- menú de carreras ----
+    function raceMenu() {
+      endRace(); state = 'menu'; cancelAnimationFrame(raf); closeOver(root);
+      const box = h('div', { class: 'mg-over br-menu' }), card = h('div', { class: 'mg-over-card br-card' }); box.append(card); root.append(box);
+      card.append(h('b', { text: '🏁 Carreras' }), h('span', { text: 'Trazá una pista por las calles de tu zona y corré contra la compu. Durante la carrera las calles están cortadas: no hay tránsito ni semáforos.' }));
+      const list = myTracks(), best = H.get().raceBest || {};
+      if (list.length) {
+        card.append(h('small', { class: 'br-sub', text: 'Tus pistas' }));
+        for (const tr of list) {
+          const p = buildPath(tr.wps, tr.loop), bt = best[mapId + ':' + tr.id];
+          const go = btn(`▶ ${tr.name}`, () => startRace(tr), 'primary');
+          const row = h('div', { class: 'brr-tr' }, go, btn('✏️', () => openEditor(tr)), btn('🗑', () => { if (!confirm(`¿Borrar la pista “${tr.name}”?`)) return; saveTracks(myTracks().filter(x => x.id !== tr.id)); raceMenu(); }));
+          card.append(row, h('small', { style: 'margin:-4px 0 4px 4px', text: [p ? lenTxt(p.L) : 'sin camino', tr.loop ? `${tr.laps} vuelta${tr.laps > 1 ? 's' : ''}` : 'de punta a punta', bt ? `récord ${fmtT(bt.t)}` : ''].filter(Boolean).join(' · ') }));
+        }
+      } else card.append(h('small', { style: 'text-align:center', text: 'Todavía no armaste ninguna pista. Trazá una o probá una al azar.' }));
+      card.append(h('small', { class: 'br-sub', text: 'Rivales' }),
+        seg([1, 2, 3, 4, 5].map(n => [String(n), String(n)]), String(raceOpts.rivals), (v) => { raceOpts.rivals = +v; const s = H.get(); s.rivals = +v; H.set(s); }),
+        seg(Object.entries(DIFF).map(([k, v]) => [k, v.n]), raceOpts.diff, (v) => { raceOpts.diff = v; const s = H.get(); s.rdiff = v; H.set(s); }),
+        h('div', { class: 'brr-row', style: 'justify-content:center;margin-top:6px' },
+          btn('✏️ Trazar una pista nueva', () => openEditor(null), 'primary'),
+          btn('🎲 Pista al azar', () => { const tr = randomTrack(); if (!tr) { alert('No encontré una vuelta cerca. Trazala vos.'); return; } openEditor(tr); }),
+          btn('Volver a manejar', () => { closeOver(root); mode = mode === 'carrera' ? 'libre' : mode; syncModeSeg(); state = 'run'; run(); })));
+    }
+    function syncModeSeg() { if (modeSeg) for (const b of modeSeg.children) b.classList.toggle('on', b.textContent === ({ entregas: 'Entregas', libre: 'Paseo libre', carrera: '🏁 Carreras' })[mode]); }
+    function randomTrack() {
+      for (let tries = 0; tries < 30; tries++) {
+        const R = 170 + Math.random() * 160, a0 = Math.random() * TAU, wps = [];
+        for (let k = 0; k < 4; k++) { const a = a0 + k * TAU / 4 + (Math.random() - 0.5) * 0.5; const n = snapNode(me.x + Math.cos(a) * R, me.y + Math.sin(a) * R, 70); if (n == null) break; const [x, y] = G.nodePos(n); if (wps.some(w => w.n === n)) break; wps.push({ x, y, n }); }
+        if (wps.length < 4) continue;
+        const p = buildPath(wps, true); if (p && p.L > 600 && p.L < 4000) return { id: 't' + Date.now().toString(36), name: 'Vuelta al barrio', wps, loop: true, laps: 3, fresh: true };
+      }
+      return null;
+    }
+    // ---- editor de pistas: un mapa de la zona donde marcás las esquinas en orden ----
+    function openEditor(tr) {
+      closeOver(root); cancelAnimationFrame(raf); state = 'edit'; hud.style.display = 'none';
+      edit = { id: tr ? tr.id : 't' + Date.now().toString(36), name: tr ? tr.name : `Pista ${myTracks().length + 1}`, wps: tr ? tr.wps.map(w => ({ ...w })) : [], loop: tr ? tr.loop : true, laps: tr ? tr.laps || 3 : 3, cx: me.x, cy: me.y, z: 0.5, path: null, hover: null };
+      if (edit.wps.length) { const xs = edit.wps.map(w => w.x), ys = edit.wps.map(w => w.y); edit.cx = (Math.min(...xs) + Math.max(...xs)) / 2; edit.cy = (Math.min(...ys) + Math.max(...ys)) / 2; edit.z = Math.max(0.15, Math.min(1.2, 0.7 * Math.min(W / (Math.max(...xs) - Math.min(...xs) + 80), Hh / (Math.max(...ys) - Math.min(...ys) + 80)))); }
+      rebuildEdit();
+      const name = h('input', { type: 'text', value: edit.name, maxlength: 40, placeholder: 'Nombre de la pista' }); name.oninput = () => { edit.name = name.value; };
+      name.onkeydown = (e) => e.stopPropagation();
+      const lenEl = h('span', { class: 'brr-len' }); edit.lenEl = lenEl;
+      const lapsSel = pick('Vueltas', [1, 2, 3, 5, 10].map(n => [String(n), `${n} vuelta${n > 1 ? 's' : ''}`]), String(edit.laps), (v) => { edit.laps = +v; });
+      editPanel = h('div', { class: 'brr-panel' },
+        h('b', { text: '✏️ Trazá tu pista' }),
+        h('small', { text: 'Hacé clic en las esquinas por donde pasa la carrera, en orden: el camino va solo por las calles. Arrastrá para mover el mapa y usá la rueda para acercar. Clic derecho borra la última.' }),
+        name,
+        seg([['vuelta', 'Circuito'], ['ida', 'De punta a punta']], edit.loop ? 'vuelta' : 'ida', (v) => { edit.loop = v === 'vuelta'; lapsSel.disabled = !edit.loop; rebuildEdit(); }),
+        h('div', { class: 'brr-row' }, lapsSel, lenEl),
+        h('div', { class: 'brr-row' }, btn('↶ Deshacer', () => { edit.wps.pop(); rebuildEdit(); }), btn('Borrar todo', () => { edit.wps = []; rebuildEdit(); })),
+        h('div', { class: 'brr-row' }, btn('Cancelar', () => closeEditor()), btn('Guardar', () => saveEdit(false)), btn('🏁 Guardar y correr', () => saveEdit(true), 'primary')));
+      lapsSel.disabled = !edit.loop;
+      root.append(editPanel); cv.style.cursor = 'crosshair';
+      lastT = 0; raf = requestAnimationFrame(frame);
+    }
+    function rebuildEdit() {
+      edit.path = buildPath(edit.wps, edit.loop);
+      if (edit.lenEl) edit.lenEl.textContent = edit.path ? `Largo: ${lenTxt(edit.path.L)}` : edit.wps.length < 2 ? 'Marcá al menos 2 esquinas' : 'No hay camino entre esas esquinas';
+    }
+    function closeEditor() { edit = null; if (editPanel) editPanel.remove(); editPanel = null; hud.style.display = ''; cv.style.cursor = ''; raceMenu(); }
+    function saveEdit(go) {
+      if (!edit.path || edit.path.L < 150) { alert('La pista tiene que tener al menos 150 m. Marcá más esquinas.'); return; }
+      const tr = { id: edit.id, name: (edit.name || 'Mi pista').trim().slice(0, 40), wps: edit.wps.map(w => ({ x: +w.x.toFixed(1), y: +w.y.toFixed(1), n: w.n })), loop: edit.loop && edit.wps.length > 2, laps: edit.laps };
+      const list = myTracks().filter(x => x.id !== tr.id); list.push(tr); saveTracks(list);
+      edit = null; if (editPanel) editPanel.remove(); editPanel = null; hud.style.display = ''; cv.style.cursor = '';
+      if (go) startRace(tr); else raceMenu();
+    }
+    function editToWorld(px, py) { const b = cv.getBoundingClientRect(); return [edit.cx + (px - b.left - W / 2) / edit.z, edit.cy + (py - b.top - Hh / 2) / edit.z]; }
+    function editWheel(e) { if (!edit) return; const [wx, wy] = editToWorld(e.clientX, e.clientY); const z2 = Math.max(0.06, Math.min(4, edit.z * Math.exp(-e.deltaY * 0.0015))); edit.cx = wx - (wx - edit.cx) * edit.z / z2; edit.cy = wy - (wy - edit.cy) * edit.z / z2; edit.z = z2; }
+    let edDown = null;
+    cv.addEventListener('pointerdown', (e) => { if (state !== 'edit' || e.button === 2) return; edDown = { x: e.clientX, y: e.clientY, cx: edit.cx, cy: edit.cy, moved: false }; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', (e) => {
+      if (state !== 'edit') return;
+      if (edDown) { const dx = e.clientX - edDown.x, dy = e.clientY - edDown.y; if (Math.hypot(dx, dy) > 5) edDown.moved = true; if (edDown.moved) { edit.cx = edDown.cx - dx / edit.z; edit.cy = edDown.cy - dy / edit.z; cv.style.cursor = 'grabbing'; return; } }
+      const [wx, wy] = editToWorld(e.clientX, e.clientY); edit.hover = snapNode(wx, wy, Math.max(12, 22 / edit.z));
+    });
+    cv.addEventListener('pointerup', (e) => {
+      if (state !== 'edit' || !edDown) return; const d = edDown; edDown = null; cv.style.cursor = 'crosshair';
+      if (d.moved) return;
+      const [wx, wy] = editToWorld(e.clientX, e.clientY), n = snapNode(wx, wy, Math.max(12, 22 / edit.z)); if (n == null) return;
+      if (edit.wps.length && edit.wps[edit.wps.length - 1].n === n) return;
+      const [x, y] = G.nodePos(n); edit.wps.push({ x, y, n }); rebuildEdit();
+    });
+    cv.addEventListener('contextmenu', (e) => { if (state !== 'edit') return; e.preventDefault(); edit.wps.pop(); rebuildEdit(); });
+    function drawEditor() {
+      if (!edit || !G) return;
+      const z = edit.z;
+      ctx.fillStyle = '#151a21'; ctx.fillRect(0, 0, W, Hh);
+      ctx.save(); ctx.translate(W / 2, Hh / 2); ctx.scale(z, z); ctx.translate(-edit.cx, -edit.cy);
+      const x0 = edit.cx - W / 2 / z - 50, x1 = edit.cx + W / 2 / z + 50, y0 = edit.cy - Hh / 2 / z - 50, y1 = edit.cy + Hh / 2 / z + 50;
+      const poly = (p) => { ctx.beginPath(); p.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); };
+      for (const a of G.parks) if (a.bb[2] > x0 && a.bb[0] < x1 && a.bb[3] > y0 && a.bb[1] < y1) { poly(a.p); ctx.fillStyle = '#23382a'; ctx.fill(); }
+      for (const a of G.water) if (a.bb[2] > x0 && a.bb[0] < x1 && a.bb[3] > y0 && a.bb[1] < y1) { poly(a.p); ctx.fillStyle = '#1b3550'; ctx.fill(); }
+      ctx.lineCap = ctx.lineJoin = 'round';
+      const vis = G.inRect(x0, y0, x1, y1).roads.sort((a, b) => b.k - a.k);
+      for (const r of vis) { if (r.k > 7) continue; poly(r.p); ctx.strokeStyle = r.k <= 3 ? '#a2a9b3' : r.k === 7 ? '#3a404a' : '#646b76'; ctx.lineWidth = Math.max(r.w, (r.k <= 3 ? 3 : 2) / z); ctx.stroke(); }
+      if (z > 0.7) { ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `${11 / z}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; for (const r of vis) { if (!r.n || r.k > 6 || r.p.length < 2) continue; const m = r.p[Math.floor(r.p.length / 2)], m2 = r.p[Math.floor(r.p.length / 2) - 1] || r.p[1]; let an = Math.atan2(m[1] - m2[1], m[0] - m2[0]); if (an > Math.PI / 2 || an < -Math.PI / 2) an += Math.PI; ctx.save(); ctx.translate((m[0] + m2[0]) / 2, (m[1] + m2[1]) / 2); ctx.rotate(an); ctx.fillText(r.n, 0, -r.w / 2 - 6 / z); ctx.restore(); } }
+      // la pista
+      if (edit.path) {
+        const P = edit.path; poly(P.pts); if (P.loop) ctx.closePath();
+        ctx.strokeStyle = 'rgba(255,214,10,.35)'; ctx.lineWidth = Math.max(10, 9 / z); ctx.stroke();
+        poly(P.pts); if (P.loop) ctx.closePath(); ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = Math.max(3, 3 / z); ctx.stroke();
+        ctx.fillStyle = '#1b1b1b';
+        for (let s2 = 30 / z; s2 < P.L; s2 += 80 / z) { const [x, y, ux, uy] = pathAt(P, s2); ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(uy, ux)); ctx.scale(1 / z, 1 / z); ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(-4, -5); ctx.lineTo(-4, 5); ctx.closePath(); ctx.fill(); ctx.restore(); }
+      }
+      // esquinas marcadas
+      edit.wps.forEach((w, i) => {
+        ctx.save(); ctx.translate(w.x, w.y); ctx.scale(1 / z, 1 / z);
+        ctx.fillStyle = i === 0 ? '#30d158' : '#fff'; ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#111'; ctx.font = '800 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(i === 0 ? '🏁' : String(i + 1), 0, 0.5);
+        ctx.restore();
+      });
+      if (edit.hover != null) { const [hx, hy] = G.nodePos(edit.hover); ctx.save(); ctx.translate(hx, hy); ctx.scale(1 / z, 1 / z); ctx.strokeStyle = '#4cc9f0'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 14, 0, TAU); ctx.stroke(); ctx.restore(); }
+      // dónde estás vos
+      ctx.save(); ctx.translate(me.x, me.y); ctx.scale(1 / z, 1 / z); ctx.fillStyle = '#ff3b30'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 6, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(14,18,26,.85)'; ctx.beginPath(); ctx.roundRect(W - 190, Hh - 40, 176, 28, 10); ctx.fill(); ctx.fillStyle = '#cfd5df'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🔴 vos · 🏁 largada', W - 102, Hh - 26);
+    }
+    // ---- la carrera ----
+    function startRace(tr) {
+      const path = buildPath(tr.wps, tr.loop);
+      if (!path || path.L < 150) { alert('Esa pista no tiene un camino válido. Editala.'); return raceMenu(); }
+      closeOver(root); edit = null; job = null;
+      const laps = path.loop ? Math.max(1, tr.laps || 3) : 1, n = raceOpts.rivals, k = DIFF[raceOpts.diff].k;
+      // grilla de largada: de a dos, detrás de la línea; vos salís último
+      const slot = (i) => [-7 - Math.floor(i / 2) * 8, i % 2 ? 1.7 : -1.7];
+      const place = (o, i) => { const [P0, ln] = slot(i), [x, y, ux, uy] = pathAt(path, P0); o.x = x - uy * ln; o.y = y + ux * ln; o.a = Math.atan2(uy, ux); return P0; };
+      cars = [];
+      for (let i = 0; i < n; i++) {
+        const [nm, col, ty] = RIV[i], V = VEH[ty === 'sport' ? 'deportivo' : ty === 'pickup' ? 'camioneta' : 'auto'];
+        const c = { racer: true, name: nm, c: col, type: ty, len: V.len, wid: V.wid, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
+        c.P = place(c, i); cars.push(c);
+      }
+      const P0 = place(me, n); me.vf = me.vr = 0; me.fuel = 1; me.steer = 0; camX = me.x; camY = me.y;
+      race = { tr, path, laps, total: laps * path.L, P: P0, t: -3.6, lapIdx: 0, lapStart: 0, laps_: [], done: false, off: 0, lastCount: 4 };
+      mode = 'carrera'; syncModeSeg(); lights = isNight() ? 'low' : lights;
+      state = 'run'; run(); say(`🏁 ${tr.name}: ${laps > 1 ? laps + ' vueltas' : lenTxt(path.L)}`);
+    }
+    function endRace() { if (!race) return; race = null; cars = []; for (let i = 0; i < 25; i++) spawnCar(false); }
+    function raceReset() { const [x, y, ux, uy] = pathAt(race.path, Math.max(0, race.P)); me.x = x; me.y = y; me.a = Math.atan2(uy, ux); me.vf = me.vr = 0; say('Volviste a la pista'); }
+    function raceStep(dt) {
+      const R = race; R.t += dt; const go = R.t >= 0;
+      const c3 = Math.ceil(-R.t); if (!R.done && c3 !== R.lastCount && c3 >= 0 && c3 <= 3) { R.lastCount = c3; if (c3 > 0) SND.blip(440, 0.18, 'square', 0.1); else SND.blip(880, 0.45, 'square', 0.12); }
+      // tu avance por la pista (sólo cuenta si vas por el camino y para adelante)
+      const q = projPath(R.path, me.x, me.y, R.P);
+      if (q.d < 22) { if (Math.abs(q.ds) < 40) R.P += q.ds; R.off = 0; } else R.off += dt;
+      if (R.off > 1.2 && !R.done && Math.floor(R.off * 2) !== Math.floor((R.off - dt) * 2)) say('Te saliste de la pista: volvé al camino amarillo (R te lleva)', true);
+      if (R.path.loop && !R.done) { const lap = Math.floor(R.P / R.path.L); if (lap > R.lapIdx && R.P > 0) { const lt = R.t - R.lapStart; R.laps_.push(lt); R.lapStart = R.t; R.lapIdx = lap; if (lap < R.laps) { say(`Vuelta ${lap}: ${fmtT(lt)}${lap === R.laps - 1 ? ' · ¡última vuelta!' : ''}`); SND.blip(990, 0.2, 'triangle', 0.12); } } }
+      if (!R.done && R.P >= R.total) finishRace();
+      for (const c of cars) racerStep(c, dt, go);
+    }
+    function racerStep(c, dt, go) {
+      const R = race, path = R.path, V = 38 * c.skill;
+      const [, , u1x, u1y] = pathAt(path, c.P + 3), [, , u2x, u2y] = pathAt(path, c.P + 26), [, , u3x, u3y] = pathAt(path, c.P + 48);
+      const th = Math.abs(Math.atan2(u1x * u2y - u1y * u2x, u1x * u2x + u1y * u2y)), th2 = Math.abs(Math.atan2(u1x * u3y - u1y * u3x, u1x * u3x + u1y * u3y));
+      let want = V;
+      if (th > 0.12) want = Math.min(want, Math.max(6.5, Math.sqrt(7.2 * 22 / th)));
+      if (th2 > 0.5) want = Math.min(want, Math.max(9, Math.sqrt(7.2 * 40 / th2)));
+      if (isRain()) want *= 0.85;
+      const gap = R.P - c.P; if (gap > 120) want *= 1.07; else if (gap < -160) want *= 0.95;
+      // no pasar por arriba de nadie: frena o se abre para pasar
+      for (const o of [me, ...cars]) {
+        if (o === c) continue; const dx = o.x - c.x, dy = o.y - c.y, ah = dx * Math.cos(c.a) + dy * Math.sin(c.a), sd = -dx * Math.sin(c.a) + dy * Math.cos(c.a);
+        if (ah > 0 && ah < 9 && Math.abs(sd) < 2.2) { const ov = o === me ? me.vf : o.v; want = Math.min(want, Math.max(0, ov - 0.3)); if (!c.passT || clock > c.passT) { c.lane = sd > 0 ? -1.8 : 1.8; c.passT = clock + 2.5; } }
+      }
+      if (!go) want = 0;
+      if (c.fin) want = Math.min(want, 5);
+      c.v += Math.max(-9 * dt, Math.min(5.4 * dt * Math.max(0.2, 1 - c.v / 46), want - c.v));
+      c.brake = want < c.v - 0.4;
+      c.P += c.v * dt;
+      if (!c.fin && c.P >= R.total) c.fin = R.t;
+      c.lc = c.lc == null ? c.lane : c.lc + (c.lane - c.lc) * Math.min(1, dt * 1.4);
+      const [x, y, ux, uy] = pathAt(path, c.P), nr = nearestRoad(x, y), half = nr ? Math.max(0.4, nr.r.w / 2 - 1.3) : 1.5, ln = Math.max(-half, Math.min(half, c.lc));
+      const tx = x - uy * ln, ty = y + ux * ln, kk = 1 - Math.exp(-dt * 8), ox = c.x, oy = c.y;
+      c.x += (tx - c.x) * kk; c.y += (ty - c.y) * kk;
+      const mvx = c.x - ox, mvy = c.y - oy; if (mvx * mvx + mvy * mvy > 1e-5) c.a += angDiff(Math.atan2(mvy, mvx) - c.a) * Math.min(1, dt * 10); else c.a += angDiff(Math.atan2(uy, ux) - c.a) * Math.min(1, dt * 4);
+    }
+    function racePos() { return 1 + cars.filter(c => (c.fin && !race.done) || c.P > race.P).length; }
+    function finishRace() {
+      const R = race; R.done = true; const T = R.t;
+      if (R.path.loop && R.laps_.length < R.laps) R.laps_.push(T - R.lapStart);
+      const rows = [{ name: 'Vos', t: T, me: true }];
+      for (const c of cars) rows.push({ name: c.name, t: c.fin || (T + Math.max(0, R.total - c.P) / Math.max(10, c.v || 22)) });
+      rows.sort((a, b) => a.t - b.t); const pos = rows.findIndex(r => r.me) + 1;
+      const s = H.get(); s.raceBest = s.raceBest || {}; const key = mapId + ':' + R.tr.id, prev = s.raceBest[key], rec = !prev || T < prev.t, bl = R.laps_.length ? Math.min(...R.laps_) : null;
+      if (rec) s.raceBest[key] = { t: T, lap: bl }; s.races = (s.races || 0) + 1; if (pos === 1) s.raceWins = (s.raceWins || 0) + 1; H.set(s);
+      SND.blip(660, 0.2, 'triangle', 0.16); setTimeout(() => SND.blip(880, 0.2, 'triangle', 0.16), 150); setTimeout(() => SND.blip(1320, 0.4, 'triangle', 0.16), 300);
+      if (pos === 1) confetti(root);
+      say(pos === 1 ? '🏆 ¡Ganaste la carrera!' : `🏁 Llegaste ${pos}°`);
+      setTimeout(() => {
+        if (race !== R) return;
+        state = 'menu';
+        const tb = h('table', { class: 'brr-res' }, rows.map((r, i) => h('tr', { class: r.me ? 'me' : '' }, h('td', { text: `${i + 1}°` }), h('td', { text: r.name }), h('td', { style: 'text-align:right', text: fmtT(r.t) }))));
+        const o = overlay(root, pos === 1 ? '🏆 ¡Ganaste!' : `Llegaste ${pos}°`, `${fmtT(T)}${rec ? ' · ¡nuevo récord de la pista!' : ''}${bl ? ` · mejor vuelta ${fmtT(bl)}` : ''}`, [btn('Correr de nuevo', () => startRace(R.tr), 'primary'), btn('Otra pista', () => raceMenu()), btn('Volver a manejar', () => { closeOver(root); endRace(); mode = 'libre'; syncModeSeg(); state = 'run'; run(); })]);
+        o.querySelector('.mg-over-acts').before(tb);
+      }, 1500);
+    }
+    function raceHud() {
+      const R = race, n = cars.length + 1;
+      const lapTxt = R.path.loop ? `🏁 Vuelta ${Math.min(R.laps, Math.max(1, R.lapIdx + 1))}/${R.laps}` : `🏁 ${Math.round(Math.max(0, Math.min(1, R.P / R.path.L)) * 100)}%`;
+      const bl = R.laps_.length ? Math.min(...R.laps_) : null;
+      return `<span>${lapTxt}</span><span>Posición ${R.done ? '—' : racePos()}/${n}</span><span>⏱ ${fmtT(R.t)}</span>${bl ? `<span>Mejor vuelta ${fmtT(bl)}</span>` : ''}${me.dmg > 0.005 ? `<span>🔧 ${Math.round(me.dmg * 100)}%</span>` : ''}`;
+    }
+    // la pista sobre las calles: línea amarilla de guía, flechitas y la largada a cuadros
+    function drawRaceTrack() {
+      const P = race.path;
+      ctx.save(); ctx.lineCap = ctx.lineJoin = 'round';
+      ctx.beginPath(); P.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); if (P.loop) ctx.closePath();
+      ctx.strokeStyle = 'rgba(255,214,10,.22)'; ctx.lineWidth = 2.2; ctx.stroke(); ctx.setLineDash([2.5, 3.5]); ctx.strokeStyle = 'rgba(255,214,10,.7)'; ctx.lineWidth = 0.35; ctx.stroke(); ctx.setLineDash([]);
+      const s0 = Math.floor((race.P - 40) / 22) * 22;
+      ctx.fillStyle = 'rgba(255,214,10,.75)';
+      for (let s2 = s0; s2 < race.P + 160; s2 += 22) { if (!P.loop && (s2 < 0 || s2 > P.L)) continue; const [x, y, ux, uy] = pathAt(P, s2); ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(uy, ux)); ctx.beginPath(); ctx.moveTo(1.4, 0); ctx.lineTo(-0.8, -1.1); ctx.lineTo(-0.3, 0); ctx.lineTo(-0.8, 1.1); ctx.closePath(); ctx.fill(); ctx.restore(); }
+      const checker = (s2) => { const [x, y, ux, uy] = pathAt(P, s2), nr = nearestRoad(x, y), w = nr ? nr.r.w : 8; ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(uy, ux)); for (let i = 0; i < Math.ceil(w); i++) for (let j = 0; j < 2; j++) { ctx.fillStyle = (i + j) % 2 ? '#111' : '#f4f4f4'; ctx.fillRect(j * 0.9 - 0.9, -w / 2 + i, 0.9, 1); } ctx.restore(); };
+      checker(0); if (!P.loop) checker(P.L);
+      ctx.restore();
+    }
+    // semáforo de largada y "volvé a la pista"
+    function drawRaceOverlay() {
+      const R = race; if (!R) return;
+      if (R.t < 1) {
+        const n = Math.ceil(-R.t), go = R.t >= 0, bw = 220, x = W / 2 - bw / 2, y = Hh * 0.28;
+        ctx.save(); ctx.fillStyle = 'rgba(10,12,16,.85)'; ctx.beginPath(); ctx.roundRect(x, y, bw, 70, 16); ctx.fill();
+        for (let i = 0; i < 3; i++) { const on = go || (3 - n) >= i; ctx.fillStyle = go ? '#30d158' : on ? '#ff3b30' : 'rgba(255,255,255,.1)'; ctx.beginPath(); ctx.arc(x + 45 + i * 65, y + 35, 20, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = '#fff'; ctx.font = '900 40px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(go ? '¡YA!' : String(n), W / 2, y - 30);
+        ctx.restore();
+      }
+      if (R.off > 1.2 && !R.done) {
+        const [x, y] = pathAt(R.path, Math.max(0, R.P)), [dx, dy] = rotV(x - camX, y - camY), a = Math.atan2(dy, dx), r = Math.min(W, Hh) / 2 - 80;
+        ctx.save(); ctx.translate(W / 2 + Math.cos(a) * r, Hh / 2 + Math.sin(a) * r); ctx.rotate(a); ctx.fillStyle = '#ffd60a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-10, -14); ctx.lineTo(-4, 0); ctx.lineTo(-10, 14); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+      }
+    }
+
     // ---------- controles ----------
     const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right', ' ': 'hb' };
     const keyUp = (e) => { const k = KEYS[e.key]; if (k) keys[k] = false; if (e.key === 'h' || e.key === 'H') SND.horn(false); };
@@ -1463,6 +1786,7 @@
       if (e.key === '0') { setZoom(1); return true; }
       if ((e.key === 'p' || e.key === 'P') && state === 'pause') { msg.hidden = true; state = 'run'; return true; }
       if (state !== 'run') return false;
+      if ((e.key === 'r' || e.key === 'R') && race) { raceReset(); return true; }
       if (e.key === 'r' || e.key === 'R') {
         if (me.fuel <= 0.02 && G.stations.length) { const st = G.stations.slice().sort((a, b) => Math.hypot(a.rx - me.x, a.ry - me.y) - Math.hypot(b.rx - me.x, b.ry - me.y))[0]; const b0 = st.bays[0], bu = (b0.u0 + b0.u1) / 2, bv = (b0.v0 + b0.v1) / 2; me.x = st.ex + st.ux * bu + st.vx * bv; me.y = st.ey + st.uy * bu + st.vy * bv; me.a = st.ang; me.vf = me.vr = 0; me.fuel = 0.08; if (mode === 'entregas') stats.pts = Math.max(0, stats.pts - 30); say('🚛 La grúa te dejó en la estación (−30 pts). Quedate quieto para cargar'); return true; }
         resetToRoad(); say('Volviste a la calle'); return true;
@@ -1475,11 +1799,17 @@
       if (e.key === 'p' || e.key === 'P') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; keys = {}; return true; }
       const k = KEYS[e.key]; if (!k) return false; keys[k] = true; return true;
     };
+    let modeSeg = null;
     const tools = [
       pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); }),
       pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); }),
+      pick('Cámara', Object.entries(CAMS), camMode, (v) => { camMode = v; const st = H.get(); st.cam = v; H.set(st); }),
       pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); say(`Ahora manejás: ${V.n}`); } }),
-      seg([['entregas', 'Entregas'], ['libre', 'Paseo libre']], mode, (v) => { mode = v; const s = H.get(); s.mode = v; H.set(s); job = null; if (state === 'run') { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); } }),
+      modeSeg = seg([['entregas', 'Entregas'], ['libre', 'Paseo libre'], ['carrera', '🏁 Carreras']], mode, (v) => {
+        if (v === 'carrera') { if (G && me) raceMenu(); return; }
+        const was = !!race; endRace(); mode = v; const s = H.get(); s.mode = v; H.set(s); job = null;
+        if (state === 'run' || was) { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); }
+      }),
       btn('Cambiar zona', () => menu()),
       btn('Volver a la calle', () => { if (state === 'run') resetToRoad(); }),
       (() => { const b = btn(sndOn ? '🔊 Sonido' : '🔇 Sin sonido', () => { SND.init(); SND.on(!sndOn); b.textContent = sndOn ? '🔊 Sonido' : '🔇 Sin sonido'; const st = H.get(); st.snd = sndOn; H.set(st); }); return b; })()

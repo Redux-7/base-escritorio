@@ -39,14 +39,14 @@
     {
       "id": "barrio",
       "n": "Manejá por tu barrio",
-      "d": "Tus calles reales vistas desde arriba, con semáforos, tránsito y entregas. Necesita Base 2.27.",
+      "d": "Tus calles reales vistas desde arriba: entregas, paseo libre y carreras en pistas que trazás vos. Necesita Base 2.27.",
       "c": "#3a6b8f",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#b9b3a6\"/><path d=\"M0 22h64M0 46h64M20 0v64M46 0v64\" stroke=\"#4b4e54\" stroke-width=\"9\"/><path d=\"M0 22h64M20 0v64\" stroke=\"#e0b43a\" stroke-width=\"0.8\" stroke-dasharray=\"3 3\"/><rect x=\"26\" y=\"26\" width=\"14\" height=\"14\" fill=\"#b0603c\"/><rect x=\"4\" y=\"4\" width=\"10\" height=\"12\" fill=\"#8e8e8a\"/><rect x=\"52\" y=\"52\" width=\"9\" height=\"9\" fill=\"#6f8f4e\"/><rect x=\"28\" y=\"19\" width=\"9\" height=\"5\" rx=\"1.2\" fill=\"#d3202a\"/><rect x=\"43\" y=\"30\" width=\"5\" height=\"9\" rx=\"1.2\" fill=\"#f2f2f2\"/><circle cx=\"16\" cy=\"18\" r=\"2\" fill=\"#30d158\"/></svg>",
       "tipo": "Manejo",
-      "v": "14",
+      "v": "15",
       "file": "barrio.js",
-      "size": 133275,
-      "sha256": "1ed35084532236ee1b3a03c223e1383c1a0cfdab7621bc3465bbb690728314cf"
+      "size": 164219,
+      "sha256": "ce813a17adbe1a033f0d80cb16db2e76d8b6cc280ce6ab7abe3cc0f40dfd5f24"
     },
     {
       "id": "futbol",
