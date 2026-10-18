@@ -275,8 +275,11 @@
     cv.addEventListener('wheel', (e) => { e.preventDefault(); if (state === 'edit') return editWheel(e); setZoom(zoomMul * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
     const ctx = cv.getContext('2d');
     let W = 800, Hh = 500, lastSz = '', rf = 0;
-    const fit = () => { W = Math.max(320, root.clientWidth); Hh = Math.max(240, root.clientHeight); const d = Math.min(2, devicePixelRatio || 1); cv.width = W * d; cv.height = Hh * d; cv.style.width = W + 'px'; cv.style.height = Hh + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); DPR = d; };
+    const fit = () => { W = Math.max(320, root.clientWidth); Hh = Math.max(240, root.clientHeight); const d = Math.min(2, devicePixelRatio || 1); cv.width = W * d; cv.height = Hh * d; cv.style.width = W + 'px'; cv.style.height = Hh + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); DPR = d; if (G && me && state !== 'run' && state !== 'edit') { try { draw(); hudPaint(); } catch {} } };
     let DPR = 1;
+    // al entrar o salir de pantalla completa se vuelve a medir todo (a veces el tamaño llega tarde)
+    const onFs = () => { lastSz = ''; for (const ms of [30, 200, 500]) setTimeout(fit, ms); };
+    document.addEventListener('fullscreenchange', onFs);
     new ResizeObserver(() => { const k = root.clientWidth + 'x' + root.clientHeight; if (k === lastSz) return; lastSz = k; cancelAnimationFrame(rf); rf = requestAnimationFrame(fit); }).observe(root);
 
     let G = null, mapId = H.get().map || null, mode = H.get().mode === 'libre' ? 'libre' : 'entregas';
@@ -1092,18 +1095,43 @@
       for (const [fx, fy] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw]]) {
         if (solidAt(me.x + ca * fx - sa * fy, me.y + sa * fx + ca * fy)) { me.x = px; me.y = py; if (Math.abs(me.vf) > 4) { crash('¡Chocaste contra una casa!'); hurt(me, Math.abs(me.vf), fx, fy); } me.vf *= -0.25; me.vr = 0; break; }
       }
-      // choques con autos
+      // choques con autos: rectángulo contra rectángulo, con rebote según cómo fue el golpe
+      // (un roce de costado casi no frena; un golpe de frente o de atrás sí)
       for (const c of cars) {
-        const dx = c.x - me.x, dy = c.y - me.y, d = Math.hypot(dx, dy), minD = 1 + (c.len + me.len) / 5;
-        if (d < minD && d > 0) {
-          const push = (minD - d), ux = dx / d, uy = dy / d;
-          me.x -= ux * push; me.y -= uy * push;
-          if (Math.abs(me.vf) > 3 && clock - (c.hitT || -9) > 0.8) {
-            crash('¡Choque!'); c.hitT = clock; const sp = Math.abs(me.vf);
-            const [lx, ly] = toLocal(me, c.x, c.y); hurt(me, sp, lx * 3, ly * 3);
-            const [ox, oy] = toLocal(c, me.x, me.y); hurt(c, sp, ox * 3, oy * 3); if (!c.racer) { c.haz = true; c.hazT = 6; } else c.v *= 0.5;
-          }
-          me.vf *= 0.35; if (!c.racer) c.v = 0;
+        if (Math.abs(c.x - me.x) > 12 || Math.abs(c.y - me.y) > 12) continue;
+        const hit = obbHit(me, c); if (!hit) continue;
+        const { nx, ny, depth } = hit; // normal de mí hacia el otro
+        const ca = Math.cos(me.a), sa = Math.sin(me.a);
+        let vx = ca * me.vf - sa * me.vr, vy = sa * me.vf + ca * me.vr;
+        const cv = c.v || 0; let ox = Math.cos(c.a) * cv, oy = Math.sin(c.a) * cv;
+        const m1 = me.len * me.wid, m2 = (c.len || 4.3) * (c.wid || 1.85) * (c.racer ? 1 : 1.3);
+        // separar (cada uno se corre según su peso)
+        const k1 = m2 / (m1 + m2), k2 = m1 / (m1 + m2);
+        me.x -= nx * depth * k1; me.y -= ny * depth * k1;
+        if (c.racer) { const [, , pux, puy] = pathAt(race.path, c.P); c.lc = (c.lc || 0) + (-puy * nx + pux * ny) * depth * k2; c.x += nx * depth * k2; c.y += ny * depth * k2; }
+        else { c.x += nx * depth * k2; c.y += ny * depth * k2; }
+        const rvx = vx - ox, rvy = vy - oy, vn = rvx * nx + rvy * ny; // velocidad con que se acercan
+        if (vn > 0) {
+          const e = 0.25, J = (1 + e) * vn / (1 / m1 + 1 / m2);
+          vx -= J / m1 * nx; vy -= J / m1 * ny; ox += J / m2 * nx; oy += J / m2 * ny;
+          // roce: un poco de fricción a lo largo del costado
+          const tx = -ny, ty = nx, vt = rvx * tx + rvy * ty, f = Math.max(-0.06, Math.min(0.06, -vt * 0.04)) * Math.min(1, vn);
+          vx += tx * f * vt / (Math.abs(vt) || 1); vy += ty * f * vt / (Math.abs(vt) || 1);
+          // giro: un golpe en una punta hace girar un poco el auto
+          const along = nx * ca + ny * sa, side = -nx * sa + ny * ca;
+          me.a += Math.max(-0.12, Math.min(0.12, side * along * J / m1 * 0.03));
+          me.vf = vx * ca + vy * sa; me.vr = -vx * sa + vy * ca;
+          const cvNew = ox * Math.cos(c.a) + oy * Math.sin(c.a); c.v = Math.max(0, c.racer ? cvNew : Math.min(cv, cvNew));
+          // qué tipo de golpe fue
+          const kind = Math.abs(along) > 0.72 ? (along > 0 ? 'frente' : 'atras') : 'costado';
+          const sev = kind === 'costado' ? vn * 0.6 : vn;
+          if (sev > 3.2 && clock - (c.hitT || -9) > 0.6) {
+            c.hitT = clock;
+            crash(kind === 'frente' ? '¡Choque de trompa!' : kind === 'atras' ? '¡Te chocaron de atrás!' : '¡Choque de costado!');
+            const [lx, ly] = toLocal(me, c.x, c.y); hurt(me, sev + 2, lx * 3, ly * 3);
+            const [qx, qy] = toLocal(c, me.x, me.y); hurt(c, sev + 2, qx * 3, qy * 3);
+            if (!c.racer) { c.haz = true; c.hazT = 6; }
+          } else if (vn > 0.8 && clock - (c.scrT || -9) > 0.35) { c.scrT = clock; SND.crash(Math.min(0.25, vn / 12)); }
         }
       }
       // choques con autos estacionados (rectángulo contra rectángulo)
@@ -1137,6 +1165,20 @@
       const sev = Math.max(0.02, Math.min(0.35, (spd - 2) / 32)); o.dmg = Math.min(1, (o.dmg || 0) + sev); if (o === me) SND.crash(sev * 2.5);
       const hx = Math.max(-o.len / 2, Math.min(o.len / 2, lx)), hy = Math.max(-o.wid / 2, Math.min(o.wid / 2, ly));
       (o.hits || (o.hits = [])).push([hx, hy, sev, Math.random()]); if (o.hits.length > 14) o.hits.shift();
+    }
+    // contacto entre dos rectángulos (separación por ejes): normal de A hacia B y cuánto se pisan
+    function obbHit(A, B) {
+      const ax = [Math.cos(A.a), Math.sin(A.a)], ay = [-Math.sin(A.a), Math.cos(A.a)], bx = [Math.cos(B.a), Math.sin(B.a)], by = [-Math.sin(B.a), Math.cos(B.a)];
+      const ha = [A.len / 2, A.wid / 2], hb = [(B.len || 4.3) / 2, (B.wid || 1.85) / 2], d = [B.x - A.x, B.y - A.y];
+      let best = 1e9, bn = null;
+      for (const n of [ax, ay, bx, by]) {
+        const ra = ha[0] * Math.abs(ax[0] * n[0] + ax[1] * n[1]) + ha[1] * Math.abs(ay[0] * n[0] + ay[1] * n[1]);
+        const rb = hb[0] * Math.abs(bx[0] * n[0] + bx[1] * n[1]) + hb[1] * Math.abs(by[0] * n[0] + by[1] * n[1]);
+        const dist = d[0] * n[0] + d[1] * n[1], ov = ra + rb - Math.abs(dist);
+        if (ov <= 0) return null;
+        if (ov < best) { best = ov; bn = dist < 0 ? [-n[0], -n[1]] : n; }
+      }
+      return { nx: bn[0], ny: bn[1], depth: best };
     }
     const toLocal = (o, x, y) => { const dx = x - o.x, dy = y - o.y, c = Math.cos(o.a), s2 = Math.sin(o.a); return [dx * c + dy * s2, -dx * s2 + dy * c]; };
     function crash(t) { if (clock - lastCrash < 1.2) return; lastCrash = clock; stats.crash++; if (job) job.crash++; say(t, true); }
@@ -1741,6 +1783,7 @@
       hud.innerHTML = h2;
     }
     function frame(t) {
+      if (state === 'closed') return;
       const dt = Math.min(0.05, lastT ? (t - lastT) / 1000 : 0.016); lastT = t;
       if (state === 'run') { step(dt); draw(); hudPaint(); if (race) drawRaceOverlay(); }
       else if ((state === 'menu-pause' || state === 'pause') && G && me) { draw(); hudPaint(); if (race) drawRaceOverlay(); }
@@ -2301,8 +2344,10 @@
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = myColor(id); },
       help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · M menú · F pantalla completa · P pausa. Podés ir por el borde de la vereda, más despacio. Tu Casa tiene garaje: entrá despacio, quedate quieto adentro y el auto queda guardado (con el tanque lleno y arreglado); en el Menú (tecla M) podés volver a Casa o elegir con un clic en el mapa dónde querés que esté. En el Menú están también el modo de juego, el tránsito, el clima, el vehículo, la cámara y Reiniciar el juego. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
-      hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
-      show: () => {}
+      hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } if (state === 'menu-pause') { optPanel.style.display = 'none'; state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
+      show: () => { lastSz = ''; requestAnimationFrame(fit); },
+      // al cerrar el juego: se corta todo (dibujo, sonido y teclas)
+      destroy: () => { state = 'closed'; cancelAnimationFrame(raf); removeEventListener('keyup', keyUp); document.removeEventListener('fullscreenchange', onFs); try { SND.update(false); SND.horn(false); } catch {} }
     };
   }
 

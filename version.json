@@ -1,7 +1,7 @@
 {
-  "version": "2.38.0",
-  "file": "versiones/base-app-2.38.0.zip",
-  "sha256": "4b6692f992c8bcca45d23e912f157adc07a36a6f4c62dacdee5af82e9b36810b",
-  "size": 520912,
-  "notes": "Novedades 2.38\n- Sonido en todos los mini juegos (con un botón para apagarlo).\n- En la Tienda: 5 juegos nuevos de puzzles (Deslizá, Luces, Tubos de colores, Cañerías y Nonograma)."
+  "version": "2.39.0",
+  "file": "versiones/base-app-2.39.0.zip",
+  "sha256": "904b4f58db21daba159b80f1bb0464c0a314e68079f0e311253eb4c0d7aa3daf",
+  "size": 521084,
+  "notes": "Novedades 2.39\n- Botón \"✕ Cerrar\" en todos los mini juegos.\n- Esc en pantalla completa sólo sale de la pantalla completa."
 }
