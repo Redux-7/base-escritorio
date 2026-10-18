@@ -12,7 +12,7 @@
   const SKIN = { rojo: '#d3202a', azul: '#1f5fe0', amarillo: '#f2c21b', verde: '#1e9e4a', negro: '#23262d', blanco: '#f2f2f2', naranja: '#ff7a1a' };
   // vehículos que podés manejar: largo, ancho, aceleración, velocidad máxima (m/s), distancia entre ejes, agarre, volante
   const VEH = {
-    formula80: { tank: 6000, n: 'F1 clásico (años 80)', t: 'f1c', len: 4.6, wid: 2.1, acc: 9.5, vmax: 74, wb: 2.9, grip: 14, steer: 0.5 },
+    formula80: { tank: 6000, n: 'F1 clásico (90s)', t: 'f1c', len: 4.5, wid: 2.05, acc: 9.5, vmax: 74, wb: 2.9, grip: 14, steer: 0.5 },
     formula: { tank: 5000, n: 'Fórmula 1', t: 'f1', len: 5.6, wid: 2.0, acc: 11, vmax: 80, wb: 3.6, grip: 17, steer: 0.48 },
     auto: { tank: 9000, n: 'Auto', t: 'auto', len: 4.4, wid: 1.9, acc: 4.6, vmax: 36, wb: 2.6, grip: 9.5, steer: 0.62 },
     deportivo: { tank: 6000, n: 'Deportivo', t: 'sport', len: 4.5, wid: 1.95, acc: 7, vmax: 50, wb: 2.6, grip: 11.5, steer: 0.6 },
@@ -885,24 +885,46 @@
       const lights = (x1, x0, w) => { g.fillStyle = '#fff4cc'; g.fillRect(x1 - 0.12, -w / 2 + 0.12, 0.1, 0.38); g.fillRect(x1 - 0.12, w / 2 - 0.5, 0.1, 0.38); g.fillStyle = '#8a1a1a'; g.fillRect(x0 + 0.02, -w / 2 + 0.12, 0.1, 0.36); g.fillRect(x0 + 0.02, w / 2 - 0.48, 0.1, 0.36); };
       const hl = L / 2, hw = Wd / 2;
       if (T === 'f1c') {
-        // fórmula de fines de los 80: trompa larga y finita, sin halo, gomas traseras anchas y alerón trasero grande
-        const tire = (x, y, w2, l2) => { g.fillStyle = '#111'; g.beginPath(); g.roundRect(x - l2 / 2, y - w2 / 2, l2, w2, 0.08); g.fill(); g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(x - l2 / 2 + 0.06, y - 0.03, l2 - 0.12, 0.06); };
-        g.strokeStyle = '#333'; g.lineWidth = 0.05; g.beginPath(); for (const sd of [-1, 1]) { g.moveTo(hl - 0.9, 0.2 * sd); g.lineTo(hl - 0.8, (hw - 0.25) * sd); g.moveTo(-hl + 0.95, 0.4 * sd); g.lineTo(-hl + 0.8, (hw - 0.3) * sd); } g.stroke();
-        for (const sd of [-1, 1]) { tire(hl - 0.8, sd * (hw - 0.24), 0.4, 0.62); tire(-hl + 0.8, sd * (hw - 0.3), 0.56, 0.74); }
-        // alerón delantero chico a los costados de la trompa
-        g.fillStyle = shade(col, -0.2); g.fillRect(hl - 0.42, -hw + 0.32, 0.26, Wd - 0.64); g.fillStyle = '#1a1a1a'; g.fillRect(hl - 0.44, -hw + 0.3, 0.3, 0.07); g.fillRect(hl - 0.44, hw - 0.37, 0.3, 0.07);
-        // carrocería: trompa en punta, pontones largos y tapa de motor que se angosta
-        g.beginPath(); g.moveTo(hl - 0.05, 0); g.lineTo(hl - 0.5, -0.17); g.lineTo(0.55, -0.3); g.lineTo(0.25, -0.68); g.lineTo(-1.1, -0.7); g.lineTo(-1.55, -0.42); g.lineTo(-hl + 0.42, -0.3); g.lineTo(-hl + 0.42, 0.3); g.lineTo(-1.55, 0.42); g.lineTo(-1.1, 0.7); g.lineTo(0.25, 0.68); g.lineTo(0.55, 0.3); g.lineTo(hl - 0.5, 0.17); g.closePath();
-        g.fillStyle = paint(-hl, hl, -0.72, 0.72); g.fill(); g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.04; g.stroke();
-        // franja blanca a lo largo (dos colores, como se usaba)
-        g.save(); g.clip(); g.fillStyle = 'rgba(255,255,255,.88)'; g.beginPath(); g.moveTo(hl, -0.05); g.lineTo(0.3, -0.75); g.lineTo(-0.2, -0.75); g.lineTo(hl - 0.6, 0); g.lineTo(-0.2, 0.75); g.lineTo(0.3, 0.75); g.lineTo(hl, 0.05); g.closePath(); g.fill(); g.restore();
-        // cockpit abierto con el casco
-        g.fillStyle = '#0c0d10'; g.beginPath(); g.ellipse(-0.05, 0, 0.42, 0.22, 0, 0, TAU); g.fill();
-        g.fillStyle = '#f2d230'; g.beginPath(); g.arc(-0.12, 0, 0.16, 0, TAU); g.fill(); g.fillStyle = '#2b5fb8'; g.fillRect(-0.06, -0.1, 0.05, 0.2);
-        g.fillStyle = 'rgba(180,200,220,.6)'; g.beginPath(); g.ellipse(0.32, 0, 0.08, 0.2, 0, 0, TAU); g.fill();
-        // toma de aire arriba y alerón trasero ancho
-        g.fillStyle = '#1b1b1b'; g.beginPath(); g.ellipse(-0.55, 0, 0.16, 0.12, 0, 0, TAU); g.fill();
-        g.fillStyle = '#18191d'; g.fillRect(-hl - 0.02, -0.95, 0.48, 1.9); g.fillStyle = shade(col, 0.1); g.fillRect(-hl + 0.06, -0.92, 0.32, 1.84); g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(-hl + 0.14, -0.92, 0.1, 1.84);
+        // fórmula estilo principios de los 90 (diseño propio): trompa baja y larga, alerón delantero ancho,
+        // pontones largos con tomas de aire, toma de aire sobre el piloto, gomas traseras anchas y alerón trasero alto
+        const dark = '#141518', two = '#2b2e35';
+        const tire = (x, y, w2, l2) => { g.fillStyle = '#0e0e0f'; g.beginPath(); g.roundRect(x - l2 / 2, y - w2 / 2, l2, w2, 0.1); g.fill(); g.fillStyle = 'rgba(255,255,255,.09)'; g.fillRect(x - l2 / 2 + 0.08, y - w2 / 2 + 0.05, l2 - 0.16, 0.05); g.fillRect(x - l2 / 2 + 0.08, y + w2 / 2 - 0.1, l2 - 0.16, 0.05); };
+        const fx = hl - 0.95, rx = -hl + 0.78;
+        // brazos de suspensión
+        g.strokeStyle = '#2a2b2e'; g.lineWidth = 0.05; g.beginPath();
+        for (const sd of [-1, 1]) { g.moveTo(fx + 0.22, 0.14 * sd); g.lineTo(fx, (hw - 0.26) * sd); g.moveTo(fx - 0.25, 0.18 * sd); g.lineTo(fx, (hw - 0.26) * sd); g.moveTo(rx + 0.3, 0.42 * sd); g.lineTo(rx, (hw - 0.31) * sd); g.moveTo(rx - 0.25, 0.3 * sd); g.lineTo(rx, (hw - 0.31) * sd); }
+        g.stroke();
+        for (const sd of [-1, 1]) { tire(fx, sd * (hw - 0.26), 0.42, 0.6); tire(rx, sd * (hw - 0.31), 0.6, 0.74); }
+        // alerón delantero ancho, delante de las ruedas
+        g.fillStyle = col; g.beginPath(); g.roundRect(hl - 0.36, -hw + 0.02, 0.26, Wd - 0.04, 0.05); g.fill();
+        g.fillStyle = dark; g.fillRect(hl - 0.4, -hw, 0.34, 0.06); g.fillRect(hl - 0.4, hw - 0.06, 0.34, 0.06); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(hl - 0.24, -hw + 0.06, 0.04, Wd - 0.12);
+        // carrocería: trompa angosta, cockpit, pontones largos que se angostan hacia atrás
+        const body = () => { g.beginPath(); g.moveTo(hl - 0.08, -0.06); g.quadraticCurveTo(hl - 0.02, 0, hl - 0.08, 0.06); g.lineTo(fx + 0.1, 0.17); g.lineTo(0.62, 0.24); g.lineTo(0.5, 0.36); g.lineTo(0.38, 0.66); g.quadraticCurveTo(0.3, 0.74, 0.1, 0.74); g.lineTo(-1.0, 0.7); g.quadraticCurveTo(-1.35, 0.6, -1.5, 0.42); g.lineTo(rx + 0.2, 0.3); g.lineTo(-hl + 0.38, 0.24); g.lineTo(-hl + 0.38, -0.24); g.lineTo(rx + 0.2, -0.3); g.lineTo(-1.5, -0.42); g.quadraticCurveTo(-1.35, -0.6, -1.0, -0.7); g.lineTo(0.1, -0.74); g.quadraticCurveTo(0.3, -0.74, 0.38, -0.66); g.lineTo(0.5, -0.36); g.lineTo(0.62, -0.24); g.lineTo(fx + 0.1, -0.17); g.closePath(); };
+        body(); g.fillStyle = paint(-hl, hl, -0.75, 0.75); g.fill();
+        // pintura de dos colores: el color elegido arriba y grafito en los pontones y la punta
+        g.save(); body(); g.clip();
+        g.fillStyle = two; g.fillRect(-1.6, -0.8, 2.0, 0.32); g.fillRect(-1.6, 0.48, 2.0, 0.32); g.beginPath(); g.moveTo(hl, -0.2); g.lineTo(hl - 0.55, -0.2); g.lineTo(hl - 0.55, 0.2); g.lineTo(hl, 0.2); g.closePath(); g.fill();
+        g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(-1.6, -0.49, 2.0, 0.03); g.fillRect(-1.6, 0.46, 2.0, 0.03);
+        g.restore();
+        body(); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 0.035; g.stroke();
+        // tomas de aire de los pontones
+        g.fillStyle = dark; for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(0.33, 0.56 * sd, 0.07, 0.15, 0, 0, TAU); g.fill(); }
+        // número en la trompa (círculo blanco)
+        g.fillStyle = '#fff'; g.beginPath(); g.arc(fx + 0.55, 0, 0.13, 0, TAU); g.fill(); g.fillStyle = '#111'; g.fillRect(fx + 0.53, -0.07, 0.04, 0.14);
+        // cockpit abierto, parabrisas y casco
+        g.fillStyle = 'rgba(160,185,210,.55)'; g.beginPath(); g.ellipse(0.42, 0, 0.06, 0.2, 0, 0, TAU); g.fill();
+        g.fillStyle = '#0b0c0e'; g.beginPath(); g.ellipse(0.08, 0, 0.36, 0.2, 0, 0, TAU); g.fill();
+        g.fillStyle = '#f1d23a'; g.beginPath(); g.arc(0.0, 0, 0.15, 0, TAU); g.fill(); g.fillStyle = '#1f6b3a'; g.fillRect(0.05, -0.15, 0.04, 0.3); g.fillStyle = '#18233a'; g.fillRect(0.1, -0.09, 0.04, 0.18);
+        // espejitos
+        g.fillStyle = dark; for (const sd of [-1, 1]) { g.fillRect(0.28, 0.4 * sd - 0.05, 0.12, 0.1); }
+        // toma de aire sobre la cabeza y tapa de motor
+        g.fillStyle = col; g.beginPath(); g.moveTo(-0.22, -0.2); g.lineTo(-1.2, -0.13); g.lineTo(-1.2, 0.13); g.lineTo(-0.22, 0.2); g.closePath(); g.fill();
+        g.fillStyle = dark; g.beginPath(); g.ellipse(-0.28, 0, 0.1, 0.13, 0, 0, TAU); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(-1.15, -0.04, 0.85, 0.05);
+        // alerón trasero alto con derivas
+        g.fillStyle = dark; g.fillRect(-hl - 0.04, -0.78, 0.5, 0.07); g.fillRect(-hl - 0.04, 0.71, 0.5, 0.07);
+        g.fillStyle = col; g.fillRect(-hl + 0.0, -0.74, 0.42, 1.48); g.fillStyle = two; g.fillRect(-hl + 0.12, -0.74, 0.12, 1.48);
+        g.fillStyle = '#ff2b2b'; g.fillRect(-hl - 0.03, -0.05, 0.06, 0.1);
       } else if (T === 'f1') {
         // fórmula: ruedas al aire, alerones adelante y atrás, piloto con casco y halo
         const tire = (x, y) => { g.fillStyle = '#121212'; g.beginPath(); g.roundRect(x - 0.36, y - 0.22, 0.72, 0.44, 0.08); g.fill(); g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x - 0.3, y - 0.03, 0.6, 0.06); };
