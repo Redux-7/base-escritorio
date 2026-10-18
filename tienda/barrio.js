@@ -12,6 +12,7 @@
   const SKIN = { rojo: '#d3202a', azul: '#1f5fe0', amarillo: '#f2c21b', verde: '#1e9e4a', negro: '#23262d', blanco: '#f2f2f2', naranja: '#ff7a1a' };
   // vehículos que podés manejar: largo, ancho, aceleración, velocidad máxima (m/s), distancia entre ejes, agarre, volante
   const VEH = {
+    formula: { tank: 5000, n: 'Fórmula 1', t: 'f1', len: 5.6, wid: 2.0, acc: 11, vmax: 80, wb: 3.6, grip: 17, steer: 0.48 },
     auto: { tank: 9000, n: 'Auto', t: 'auto', len: 4.4, wid: 1.9, acc: 4.6, vmax: 36, wb: 2.6, grip: 9.5, steer: 0.62 },
     deportivo: { tank: 6000, n: 'Deportivo', t: 'sport', len: 4.5, wid: 1.95, acc: 7, vmax: 50, wb: 2.6, grip: 11.5, steer: 0.6 },
     camioneta: { tank: 8000, n: 'Camioneta', t: 'pickup', len: 5.3, wid: 2.0, acc: 3.9, vmax: 33, wb: 3.2, grip: 8.5, steer: 0.56 },
@@ -811,7 +812,9 @@
     }
     let lastCrash = 0;
     // daños: abolladuras en el punto del golpe (coordenadas del vehículo), y el total 0..1
+    let dmgOn = H.get().noDmg !== true;
     function hurt(o, spd, lx, ly) {
+      if (!dmgOn) { if (o === me) SND.crash(Math.min(0.8, (spd - 2) / 15)); return; }
       const sev = Math.max(0.02, Math.min(0.35, (spd - 2) / 32)); o.dmg = Math.min(1, (o.dmg || 0) + sev); if (o === me) SND.crash(sev * 2.5);
       const hx = Math.max(-o.len / 2, Math.min(o.len / 2, lx)), hy = Math.max(-o.wid / 2, Math.min(o.wid / 2, ly));
       (o.hits || (o.hits = [])).push([hx, hy, sev, Math.random()]); if (o.hits.length > 14) o.hits.shift();
@@ -880,7 +883,21 @@
       const glass = (pts, light) => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); const gr = g.createLinearGradient(pts[0][0], 0, pts[2][0], 0); gr.addColorStop(0, light ? '#4a5d74' : '#1d2836'); gr.addColorStop(1, '#0e151f'); g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 0.04; g.stroke(); };
       const lights = (x1, x0, w) => { g.fillStyle = '#fff4cc'; g.fillRect(x1 - 0.12, -w / 2 + 0.12, 0.1, 0.38); g.fillRect(x1 - 0.12, w / 2 - 0.5, 0.1, 0.38); g.fillStyle = '#8a1a1a'; g.fillRect(x0 + 0.02, -w / 2 + 0.12, 0.1, 0.36); g.fillRect(x0 + 0.02, w / 2 - 0.48, 0.1, 0.36); };
       const hl = L / 2, hw = Wd / 2;
-      if (T === 'moto') {
+      if (T === 'f1') {
+        // fórmula: ruedas al aire, alerones adelante y atrás, piloto con casco y halo
+        const tire = (x, y) => { g.fillStyle = '#121212'; g.beginPath(); g.roundRect(x - 0.36, y - 0.22, 0.72, 0.44, 0.08); g.fill(); g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x - 0.3, y - 0.03, 0.6, 0.06); };
+        g.strokeStyle = '#2b2b2b'; g.lineWidth = 0.06; g.beginPath(); for (const [x, y] of [[hl - 0.8, hw - 0.22], [-hl + 0.9, hw - 0.22]]) for (const sd of [-1, 1]) { g.moveTo(x + 0.15, 0.22 * sd); g.lineTo(x, y * sd); g.moveTo(x - 0.2, 0.25 * sd); g.lineTo(x, y * sd); } g.stroke();
+        for (const sd of [-1, 1]) { tire(hl - 0.8, sd * (hw - 0.22)); tire(-hl + 0.9, sd * (hw - 0.24)); }
+        g.fillStyle = shade(col, -0.25); g.fillRect(hl - 0.34, -hw + 0.05, 0.3, Wd - 0.1); g.fillStyle = '#1a1a1a'; g.fillRect(hl - 0.36, -hw + 0.02, 0.36, 0.1); g.fillRect(hl - 0.36, hw - 0.12, 0.36, 0.1);
+        g.beginPath(); g.moveTo(hl - 0.25, -0.13); g.lineTo(0.95, -0.27); g.lineTo(0.45, -0.72); g.lineTo(-1.5, -0.7); g.lineTo(-2.05, -0.36); g.lineTo(-hl + 0.45, -0.26); g.lineTo(-hl + 0.45, 0.26); g.lineTo(-2.05, 0.36); g.lineTo(-1.5, 0.7); g.lineTo(0.45, 0.72); g.lineTo(0.95, 0.27); g.lineTo(hl - 0.25, 0.13); g.closePath();
+        g.fillStyle = paint(-hl, hl, -0.75, 0.75); g.fill(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.04; g.stroke();
+        g.fillStyle = 'rgba(255,255,255,.75)'; g.fillRect(-1.9, -0.06, 2.6, 0.12);
+        g.fillStyle = '#0d0f12'; g.beginPath(); g.ellipse(0.15, 0, 0.48, 0.24, 0, 0, TAU); g.fill();
+        g.fillStyle = '#f2d230'; g.beginPath(); g.arc(0.05, 0, 0.17, 0, TAU); g.fill(); g.fillStyle = '#1b2a3a'; g.fillRect(0.12, -0.11, 0.06, 0.22);
+        g.strokeStyle = '#2a2a2a'; g.lineWidth = 0.07; g.beginPath(); g.arc(0.05, 0, 0.3, -1.3, 1.3); g.moveTo(0.35, 0); g.lineTo(0.55, 0); g.stroke();
+        g.fillStyle = '#16181c'; g.fillRect(-hl + 0.02, -0.85, 0.42, 1.7); g.fillStyle = col; g.fillRect(-hl + 0.1, -0.85, 0.12, 1.7);
+        g.fillStyle = '#ff3030'; g.fillRect(-hl + 0.02, -0.06, 0.08, 0.12);
+      } else if (T === 'moto') {
         g.fillStyle = '#111'; g.beginPath(); g.ellipse(hl - 0.32, 0, 0.32, 0.1, 0, 0, TAU); g.ellipse(-hl + 0.32, 0, 0.32, 0.1, 0, 0, TAU); g.fill();
         g.fillStyle = paint(-0.3, 0.3, -0.3, 0.3); g.beginPath(); g.ellipse(0.25, 0, 0.42, 0.2, 0, 0, TAU); g.fill();
         g.fillStyle = '#2a2a2a'; g.beginPath(); g.ellipse(-0.25, 0, 0.38, 0.16, 0, 0, TAU); g.fill();
@@ -1452,7 +1469,7 @@
           if (!A) return;
           if (!run || !me) { for (const g of [engG, tireG, rainG, sirenG, hornG, pumpG]) set(g, 0, 0.05); return; }
           const V = me.V, spd = Math.abs(me.vf), span = V.vmax / 5, gear = Math.min(4, Math.floor(spd / span)), frac = (spd - gear * span) / span;
-          const base = me.type === 'moto' ? 70 : me.type === 'bus' || me.type === 'truck' ? 28 : me.type === 'sport' ? 52 : 40;
+          const base = me.type === 'f1' ? 92 : me.type === 'moto' ? 70 : me.type === 'bus' || me.type === 'truck' ? 28 : me.type === 'sport' ? 52 : 40;
           const rpm = spd < 0.3 ? 0 : 0.25 + frac * 0.75 + (keys.up ? 0.08 : 0), f = base * (1 + rpm * 1.6) * (1 + gear * 0.04);
           eng1.frequency.setTargetAtTime(f, A.currentTime, 0.05); eng2.frequency.setTargetAtTime(f / 2, A.currentTime, 0.05);
           engF.frequency.setTargetAtTime(300 + rpm * 1300 + (keys.up ? 300 : 0), A.currentTime, 0.08);
@@ -1565,7 +1582,8 @@
           btn('🎲 Pista al azar', () => { const tr = randomTrack(); if (!tr) { alert('No encontré una vuelta cerca. Trazala vos.'); return; } openEditor(tr); }),
           btn('Volver a manejar', () => { closeOver(root); mode = mode === 'carrera' ? 'libre' : mode; syncModeSeg(); state = 'run'; run(); })));
     }
-    function syncModeSeg() { if (modeSeg) for (const b of modeSeg.children) b.classList.toggle('on', b.textContent === ({ entregas: 'Entregas', libre: 'Paseo libre', carrera: '🏁 Carreras' })[mode]); }
+    function syncRaceBtns() { if (restartBtn) restartBtn.style.display = race ? '' : 'none'; if (backBtn) backBtn.style.display = race ? 'none' : ''; }
+    function syncModeSeg() { syncRaceBtns(); if (modeSeg) for (const b of modeSeg.children) b.classList.toggle('on', b.textContent === ({ entregas: 'Entregas', libre: 'Paseo libre', carrera: '🏁 Carreras' })[mode]); }
     function randomTrack() {
       for (let tries = 0; tries < 30; tries++) {
         const R = 170 + Math.random() * 160, a0 = Math.random() * TAU, wps = [];
@@ -1670,17 +1688,18 @@
       const slot = (i) => [-7 - Math.floor(i / 2) * 8, i % 2 ? 1.7 : -1.7];
       const place = (o, i) => { const [P0, ln] = slot(i), [x, y, ux, uy] = pathAt(path, P0); o.x = x - uy * ln; o.y = y + ux * ln; o.a = Math.atan2(uy, ux); return P0; };
       cars = [];
+      const f1 = me.type === 'f1';
       for (let i = 0; i < n; i++) {
-        const [nm, col, ty] = RIV[i], V = VEH[ty === 'sport' ? 'deportivo' : ty === 'pickup' ? 'camioneta' : 'auto'];
-        const c = { racer: true, name: nm, c: col, type: ty, len: V.len, wid: V.wid, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
+        const [nm, col, ty0] = RIV[i], ty = f1 ? 'f1' : ty0, V = VEH[f1 ? 'formula' : ty === 'sport' ? 'deportivo' : ty === 'pickup' ? 'camioneta' : 'auto'];
+        const c = { racer: true, name: nm, c: col, type: ty, len: V.len, wid: V.wid, vmax: f1 ? 76 : 38, lat: f1 ? 15 : 7.2, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
         c.P = place(c, i); cars.push(c);
       }
       const P0 = place(me, n); me.vf = me.vr = 0; me.fuel = 1; me.steer = 0; camX = me.x; camY = me.y;
       race = { tr, path, laps, total: laps * path.L, P: P0, t: -3.6, lapIdx: 0, lapStart: 0, laps_: [], done: false, off: 0, lastCount: 4 };
-      mode = 'carrera'; syncModeSeg(); lights = isNight() ? 'low' : lights;
+      mode = 'carrera'; syncModeSeg(); syncRaceBtns(); lights = isNight() ? 'low' : lights;
       state = 'run'; run(); say(`🏁 ${tr.name}: ${laps > 1 ? laps + ' vueltas' : lenTxt(path.L)}`);
     }
-    function endRace() { if (!race) return; race = null; cars = []; for (let i = 0; i < 25; i++) spawnCar(false); }
+    function endRace() { if (!race) return; race = null; syncRaceBtns(); cars = []; for (let i = 0; i < 25; i++) spawnCar(false); }
     function raceReset() { const [x, y, ux, uy] = pathAt(race.path, Math.max(0, race.P)); me.x = x; me.y = y; me.a = Math.atan2(uy, ux); me.vf = me.vr = 0; say('Volviste a la pista'); }
     function raceStep(dt) {
       const R = race; R.t += dt; const go = R.t >= 0;
@@ -1694,12 +1713,12 @@
       for (const c of cars) racerStep(c, dt, go);
     }
     function racerStep(c, dt, go) {
-      const R = race, path = R.path, V = 38 * c.skill;
+      const R = race, path = R.path, V = (c.vmax || 38) * c.skill, LA = c.lat || 7.2;
       const [, , u1x, u1y] = pathAt(path, c.P + 3), [, , u2x, u2y] = pathAt(path, c.P + 26), [, , u3x, u3y] = pathAt(path, c.P + 48);
       const th = Math.abs(Math.atan2(u1x * u2y - u1y * u2x, u1x * u2x + u1y * u2y)), th2 = Math.abs(Math.atan2(u1x * u3y - u1y * u3x, u1x * u3x + u1y * u3y));
       let want = V;
-      if (th > 0.12) want = Math.min(want, Math.max(6.5, Math.sqrt(7.2 * 22 / th)));
-      if (th2 > 0.5) want = Math.min(want, Math.max(9, Math.sqrt(7.2 * 40 / th2)));
+      if (th > 0.12) want = Math.min(want, Math.max(6.5, Math.sqrt(LA * 22 / th)));
+      if (th2 > 0.5) want = Math.min(want, Math.max(9, Math.sqrt(LA * (c.vmax > 50 ? 70 : 40) / th2)));
       if (isRain()) want *= 0.85;
       const gap = R.P - c.P; if (gap > 120) want *= 1.07; else if (gap < -160) want *= 0.95;
       // no pasar por arriba de nadie: frena o se abre para pasar
@@ -1709,7 +1728,7 @@
       }
       if (!go) want = 0;
       if (c.fin) want = Math.min(want, 5);
-      c.v += Math.max(-9 * dt, Math.min(5.4 * dt * Math.max(0.2, 1 - c.v / 46), want - c.v));
+      c.v += Math.max(-(c.vmax > 50 ? 16 : 9) * dt, Math.min((c.vmax > 50 ? 10 : 5.4) * dt * Math.max(0.2, 1 - c.v / ((c.vmax || 38) * 1.2)), want - c.v));
       c.brake = want < c.v - 0.4;
       c.P += c.v * dt;
       if (!c.fin && c.P >= R.total) c.fin = R.t;
@@ -1799,7 +1818,7 @@
       if (e.key === 'p' || e.key === 'P') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; keys = {}; return true; }
       const k = KEYS[e.key]; if (!k) return false; keys[k] = true; return true;
     };
-    let modeSeg = null;
+    let modeSeg = null, backBtn = null, restartBtn = null;
     const tools = [
       pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); }),
       pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); }),
@@ -1810,10 +1829,13 @@
         const was = !!race; endRace(); mode = v; const s = H.get(); s.mode = v; H.set(s); job = null;
         if (state === 'run' || was) { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); }
       }),
-      btn('Cambiar zona', () => menu()),
-      btn('Volver a la calle', () => { if (state === 'run') resetToRoad(); }),
+      btn('🗺 Zona', () => menu()),
+      (backBtn = btn('↩ A la calle', () => { if (state === 'run') resetToRoad(); })),
+      (restartBtn = btn('↺ Reiniciar carrera', () => { if (race) startRace(race.tr); })),
+      (() => { const b = btn(dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no', () => { dmgOn = !dmgOn; if (!dmgOn && me) { me.dmg = 0; me.hits = []; } b.textContent = dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no'; const st = H.get(); st.noDmg = !dmgOn; H.set(st); say(dmgOn ? 'Daños activados' : 'Daños desactivados: los choques no rompen el auto'); }); return b; })(),
       (() => { const b = btn(sndOn ? '🔊 Sonido' : '🔇 Sin sonido', () => { SND.init(); SND.on(!sndOn); b.textContent = sndOn ? '🔊 Sonido' : '🔇 Sin sonido'; const st = H.get(); st.snd = sndOn; H.set(st); }); return b; })()
     ];
+    syncRaceBtns();
     requestAnimationFrame(async () => {
       fit();
       if (host.map && mapId) { const list = await host.map.list().catch(() => []); if (list.some(x => x.id === mapId)) return loadMap(mapId); }
