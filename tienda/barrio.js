@@ -9,7 +9,7 @@
   const angDiff = (a) => { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; };
   const SPEED = [24, 14, 15, 13.5, 12, 9, 6, 5, 4]; // velocidad de la compu por tipo de calle (m/s)
   const CAR_COLS = ['#d8dadf', '#2b2f36', '#8d939c', '#b3201c', '#1f4f9a', '#f2f2f2', '#6b6f75', '#9a7b4f', '#245a3a', '#e3b23c', '#5a2a6a', '#c7cbd1'];
-  const SKIN = { rojo: '#d3202a', azul: '#1f5fe0', amarillo: '#f2c21b', verde: '#1e9e4a', negro: '#23262d', blanco: '#f2f2f2', naranja: '#ff7a1a' };
+  const SKIN = { rojo: '#d3202a', azul: '#1f5fe0', amarillo: '#f2c21b', verde: '#1e9e4a', negro: '#23262d', blanco: '#f2f2f2', naranja: '#ff7a1a', celeste: '#5fb3ec', violeta: '#6a3fb5', bordo: '#7a1f33', plata: '#b8bec6', turquesa: '#13a3a8' };
   // vehículos que podés manejar: largo, ancho, aceleración, velocidad máxima (m/s), distancia entre ejes, agarre, volante
   const VEH = {
     formula80: { tank: 6000, n: 'F1 clásico (90s)', t: 'f1c', len: 3.9, wid: 2.2, acc: 9.5, vmax: 74, wb: 2.9, grip: 14, steer: 0.5 },
@@ -815,7 +815,7 @@
     // daños: abolladuras en el punto del golpe (coordenadas del vehículo), y el total 0..1
     let dmgOn = H.get().noDmg !== true;
     const isF1 = (t) => t === 'f1' || t === 'f1c';
-    function myColor(skinId) { const t = VEH[veh] ? VEH[veh].t : 'auto'; if (isF1(t)) return 'liv:' + (typeof liv === 'string' ? liv : 'pampa'); return SKIN[skinId || H.get().skin] || '#d3202a'; }
+    function myColor(skinId) { const t = VEH[veh] ? VEH[veh].t : 'auto'; if (isF1(t)) return 'liv:' + (SKIN[skinId || H.get().skin] || '#d3202a') + '|' + liv; return SKIN[skinId || H.get().skin] || '#d3202a'; }
     function hurt(o, spd, lx, ly) {
       if (!dmgOn) { if (o === me) SND.crash(Math.min(0.8, (spd - 2) / 15)); return; }
       const sev = Math.max(0.02, Math.min(0.35, (spd - 2) / 32)); o.dmg = Math.min(1, (o.dmg || 0) + sev); if (o === me) SND.crash(sev * 2.5);
@@ -879,8 +879,8 @@
     function sprite(T, col, L, Wd) {
       const key = T + col + L + Wd; let cvs = SPR.get(key); if (cvs) return cvs;
       // pinturas inventadas de los Fórmula 1: [principal, segundo color, detalle]
-      const LIV = { pampa: ['#1d3f8f', '#6cb4ee', '#ffffff'], rayo: ['#f5c518', '#16171a', '#16171a'], bosque: ['#0f4d2e', '#c9a43a', '#c9a43a'], uva: ['#5b2a86', '#ffffff', '#f5c518'], medianoche: ['#14213d', '#fca311', '#fca311'], glaciar: ['#b9c0c8', '#13a3a8', '#1d2733'], tango: ['#6d1a2a', '#efe3c8', '#efe3c8'], fuego: ['#ff7a1a', '#16171a', '#d62828'] };
-      let LC = null; if (typeof col === 'string' && col.startsWith('liv:')) { LC = LIV[col.slice(4)] || LIV.pampa; col = LC[0]; }
+      const COMB = { negro: ['#16171a', '#ffffff'], blanco: ['#f4f4f2', '#16171a'], dorado: ['#c9a43a', '#16171a'], celeste: ['#6cb4ee', '#ffffff'], naranja: ['#fca311', '#16171a'], plata: ['#b9c0c8', '#14213d'], crema: ['#efe3c8', '#6d1a2a'], verde: ['#1e8a4a', '#f5c518'], solo: [null, null] };
+      let LC = null; if (typeof col === 'string' && col.startsWith('liv:')) { const [mc, cb] = col.slice(4).split('|'); const cc = COMB[cb] || COMB.negro; col = /^#[0-9a-f]{6}$/i.test(mc) ? mc : '#d3202a'; LC = [col, cc[0] || shade(col, -0.35), cc[1] || shade(col, 0.45)]; }
       cvs = document.createElement('canvas'); cvs.width = Math.ceil((L + 0.6) * PX); cvs.height = Math.ceil((Wd + 0.6) * PX);
       const g = cvs.getContext('2d'); g.scale(PX, PX); g.translate(L / 2 + 0.3, Wd / 2 + 0.3);
       const body = (x0, x1, y0, y1, rf, rr) => { g.beginPath(); g.moveTo(x0 + rr, y0); g.lineTo(x1 - rf, y0); g.quadraticCurveTo(x1, y0, x1, y0 + rf); g.lineTo(x1, y1 - rf); g.quadraticCurveTo(x1, y1, x1 - rf, y1); g.lineTo(x0 + rr, y1); g.quadraticCurveTo(x0, y1, x0, y1 - rr); g.lineTo(x0, y0 + rr); g.quadraticCurveTo(x0, y0, x0 + rr, y0); g.closePath(); };
@@ -902,8 +902,8 @@
         g.stroke();
         for (const sd of [-1, 1]) { tire(fx, sd * (hw - 0.26), 0.42, 0.6); tire(rx, sd * (hw - 0.31), 0.6, 0.74); }
         // alerón delantero ancho, delante de las ruedas
-        g.fillStyle = col; g.beginPath(); g.roundRect(hl - 0.36, -hw + 0.02, 0.26, Wd2 - 0.04, 0.05); g.fill();
-        g.fillStyle = dark; g.fillRect(hl - 0.4, -hw, 0.34, 0.06); g.fillRect(hl - 0.4, hw - 0.06, 0.34, 0.06); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(hl - 0.24, -hw + 0.06, 0.04, Wd2 - 0.12);
+        g.fillStyle = col; g.beginPath(); g.roundRect(hl - 0.3, -0.72, 0.18, 1.44, 0.04); g.fill();
+        g.fillStyle = dark; g.fillRect(hl - 0.32, -0.76, 0.24, 0.06); g.fillRect(hl - 0.32, 0.7, 0.24, 0.06);
         // carrocería: trompa angosta, cockpit, pontones largos que se angostan hacia atrás
         const body = () => { g.beginPath(); g.moveTo(hl - 0.08, -0.06); g.quadraticCurveTo(hl - 0.02, 0, hl - 0.08, 0.06); g.lineTo(fx + 0.1, 0.17); g.lineTo(0.62, 0.24); g.lineTo(0.5, 0.36); g.lineTo(0.38, 0.66); g.quadraticCurveTo(0.3, 0.74, 0.1, 0.74); g.lineTo(-1.0, 0.7); g.quadraticCurveTo(-1.35, 0.6, -1.5, 0.42); g.lineTo(rx + 0.2, 0.3); g.lineTo(-hl + 0.38, 0.24); g.lineTo(-hl + 0.38, -0.24); g.lineTo(rx + 0.2, -0.3); g.lineTo(-1.5, -0.42); g.quadraticCurveTo(-1.35, -0.6, -1.0, -0.7); g.lineTo(0.1, -0.74); g.quadraticCurveTo(0.3, -0.74, 0.38, -0.66); g.lineTo(0.5, -0.36); g.lineTo(0.62, -0.24); g.lineTo(fx + 0.1, -0.17); g.closePath(); };
         body(); g.fillStyle = paint(-hl, hl, -0.75, 0.75); g.fill();
@@ -938,7 +938,7 @@
         const tire = (x, y) => { g.fillStyle = '#121212'; g.beginPath(); g.roundRect(x - 0.36, y - 0.22, 0.72, 0.44, 0.08); g.fill(); g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x - 0.3, y - 0.03, 0.6, 0.06); };
         g.strokeStyle = '#2b2b2b'; g.lineWidth = 0.06; g.beginPath(); for (const [x, y] of [[hl - 0.8, hw - 0.22], [-hl + 0.9, hw - 0.22]]) for (const sd of [-1, 1]) { g.moveTo(x + 0.15, 0.22 * sd); g.lineTo(x, y * sd); g.moveTo(x - 0.2, 0.25 * sd); g.lineTo(x, y * sd); } g.stroke();
         for (const sd of [-1, 1]) { tire(hl - 0.8, sd * (hw - 0.22)); tire(-hl + 0.9, sd * (hw - 0.24)); }
-        g.fillStyle = shade(col, -0.25); g.fillRect(hl - 0.34, -hw + 0.05, 0.3, Wd2 - 0.1); g.fillStyle = '#1a1a1a'; g.fillRect(hl - 0.36, -hw + 0.02, 0.36, 0.1); g.fillRect(hl - 0.36, hw - 0.12, 0.36, 0.1);
+        g.fillStyle = shade(col, -0.25); g.fillRect(hl - 0.3, -0.78, 0.22, 1.56); g.fillStyle = '#1a1a1a'; g.fillRect(hl - 0.32, -0.82, 0.26, 0.07); g.fillRect(hl - 0.32, 0.75, 0.26, 0.07);
         g.beginPath(); g.moveTo(hl - 0.25, -0.13); g.lineTo(0.95, -0.27); g.lineTo(0.45, -0.72); g.lineTo(-1.5, -0.7); g.lineTo(-2.05, -0.36); g.lineTo(-hl + 0.45, -0.26); g.lineTo(-hl + 0.45, 0.26); g.lineTo(-2.05, 0.36); g.lineTo(-1.5, 0.7); g.lineTo(0.45, 0.72); g.lineTo(0.95, 0.27); g.lineTo(hl - 0.25, 0.13); g.closePath();
         g.fillStyle = paint(-hl, hl, -0.75, 0.75); g.fill(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.04; g.stroke();
         g.save(); g.clip(); g.fillStyle = two; g.fillRect(-1.6, -0.8, 1.9, 0.32); g.fillRect(-1.6, 0.48, 1.9, 0.32); g.restore(); g.fillStyle = acc; g.fillRect(-1.9, -0.06, 2.6, 0.12);
@@ -1547,7 +1547,7 @@
 `;
     if (!document.getElementById('st-barrio-race')) document.head.append(h('style', { id: 'st-barrio-race', text: RCSS }));
     let race = null, edit = null, editPanel = null;
-    const DIFF = { facil: { n: 'Fácil', k: 0.74 }, normal: { n: 'Normal', k: 0.86 }, dificil: { n: 'Difícil', k: 0.98 } };
+    const DIFF = { facil: { n: 'Fácil', k: 0.62 }, normal: { n: 'Normal', k: 0.74 }, dificil: { n: 'Difícil', k: 0.86 } };
     const raceOpts = { rivals: Math.min(5, Math.max(1, +H.get().rivals || 3)), diff: DIFF[H.get().rdiff] ? H.get().rdiff : 'normal' };
     const RIV = [['Tito', '#1f5fbf', 'auto'], ['La Flaca', '#e3b21c', 'sport'], ['Ruso', '#2f8f4e', 'auto'], ['Pocho', '#7a3fbf', 'pickup'], ['Chiqui', '#d35400', 'sport']];
     const fmtT = (t) => { t = Math.max(0, t); const m = Math.floor(t / 60), s2 = t - m * 60; return `${m}:${s2.toFixed(1).padStart(4, '0')}`; };
@@ -1743,7 +1743,7 @@
       const f1 = me.type === 'f1' || me.type === 'f1c';
       for (let i = 0; i < n; i++) {
         const [nm, col, ty0] = RIV[i], ty = f1 ? me.type : ty0, V = VEH[f1 ? (me.type === 'f1c' ? 'formula80' : 'formula') : ty === 'sport' ? 'deportivo' : ty === 'pickup' ? 'camioneta' : 'auto'];
-        const LV = Object.keys(LIVN).filter(x => x !== liv), c = { racer: true, name: nm, c: f1 ? 'liv:' + LV[i % LV.length] : col, type: ty, len: V.len, wid: V.wid, vmax: f1 ? (me.type === 'f1c' ? 70 : 76) : 38, lat: f1 ? (me.type === 'f1c' ? 13 : 15) : 7.2, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
+        const LV = Object.keys(LIVN), MC = Object.values(SKIN).filter(x => x !== SKIN[H.get().skin]), c = { racer: true, name: nm, c: f1 ? 'liv:' + MC[(i * 5 + 1) % MC.length] + '|' + LV[(i * 2 + 1) % LV.length] : col, type: ty, len: V.len, wid: V.wid, vmax: f1 ? (me.type === 'f1c' ? 60 : 64) : 36, lat: f1 ? (me.type === 'f1c' ? 9.5 : 10.5) : 6.2, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
         c.P = place(c, i); cars.push(c);
       }
       const P0 = place(me, n); me.vf = me.vr = 0; me.fuel = 1; me.steer = 0; camX = me.x; camY = me.y;
@@ -1772,7 +1772,7 @@
       if (th > 0.12) want = Math.min(want, Math.max(6.5, Math.sqrt(LA * 22 / th)));
       if (th2 > 0.5) want = Math.min(want, Math.max(9, Math.sqrt(LA * (c.vmax > 50 ? 70 : 40) / th2)));
       if (isRain()) want *= 0.85;
-      const gap = R.P - c.P; if (gap > 120) want *= 1.07; else if (gap < -160) want *= 0.95;
+      const gap = R.P - c.P; if (gap > 150) want *= 1.04; else if (gap < -80) want *= 0.9;
       // no pasar por arriba de nadie: frena o se abre para pasar
       for (const o of [me, ...cars]) {
         if (o === c) continue; const dx = o.x - c.x, dy = o.y - c.y, ah = dx * Math.cos(c.a) + dy * Math.sin(c.a), sd = -dx * Math.sin(c.a) + dy * Math.cos(c.a);
@@ -1780,7 +1780,7 @@
       }
       if (!go) want = 0;
       if (c.fin) want = Math.min(want, 5);
-      c.v += Math.max(-(c.vmax > 50 ? 16 : 9) * dt, Math.min((c.vmax > 50 ? 10 : 5.4) * dt * Math.max(0.2, 1 - c.v / ((c.vmax || 38) * 1.2)), want - c.v));
+      c.v += Math.max(-(c.vmax > 50 ? 14 : 9) * dt, Math.min((c.vmax > 50 ? 7 : 4.6) * dt * Math.max(0.2, 1 - c.v / ((c.vmax || 38) * 1.2)), want - c.v));
       c.brake = want < c.v - 0.4;
       c.P += c.v * dt;
       if (!c.fin && c.P >= R.total) c.fin = R.t;
@@ -1873,8 +1873,9 @@
     };
     let modeSeg = null, backBtn = null, restartBtn = null;
     // las opciones van en un panel aparte para que la barra entre en una sola línea
-    const LIVN = { pampa: 'Pampa (azul, celeste y blanco)', rayo: 'Rayo (amarillo y negro)', bosque: 'Bosque (verde y dorado)', uva: 'Uva (violeta, blanco y amarillo)', medianoche: 'Medianoche (azul noche y naranja)', glaciar: 'Glaciar (plata y turquesa)', tango: 'Tango (bordó y crema)', fuego: 'Fuego (naranja, negro y rojo)' };
-    let liv = LIVN[H.get().liv] ? H.get().liv : 'pampa';
+    // los Fórmula 1 usan el color elegido en "Auto" como principal, más una combinación de segundo color y detalle
+    const LIVN = { negro: 'Con negro y blanco', blanco: 'Con blanco y negro', dorado: 'Con dorado', celeste: 'Con celeste y blanco', naranja: 'Con naranja y negro', plata: 'Con plata y azul noche', crema: 'Con crema y bordó', verde: 'Con verde y amarillo', solo: 'Un solo color' };
+    let liv = LIVN[H.get().liv] ? H.get().liv : 'negro';
     const dmgBtn = btn(dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no', () => { dmgOn = !dmgOn; if (!dmgOn && me) { me.dmg = 0; me.hits = []; } dmgBtn.textContent = dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no'; const st = H.get(); st.noDmg = !dmgOn; H.set(st); say(dmgOn ? 'Daños activados' : 'Daños desactivados: los choques no rompen el auto'); });
     const sndBtn = btn(sndOn ? '🔊 Sonido: sí' : '🔇 Sonido: no', () => { SND.init(); SND.on(!sndOn); sndBtn.textContent = sndOn ? '🔊 Sonido: sí' : '🔇 Sonido: no'; const st = H.get(); st.snd = sndOn; H.set(st); });
     const row = (label, el2) => h('label', { class: 'brr-l' }, h('small', { text: label }), el2);
@@ -1882,7 +1883,7 @@
       h('b', { text: '⚙ Opciones' }),
       row('Clima', pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); })),
       row('Vehículo', pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); me.c = myColor(); say(`Ahora manejás: ${V.n}`); } })),
-      row('Pintura de los Fórmula 1', pick('Pintura', Object.entries(LIVN), liv, (v) => { liv = v; const s = H.get(); s.liv = v; H.set(s); if (me) me.c = myColor(); })),
+      row('Fórmula 1: combinación con tu color', pick('Pintura', Object.entries(LIVN), liv, (v) => { liv = v; const s = H.get(); s.liv = v; H.set(s); if (me) me.c = myColor(); })),
       row('Tablero', pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); })),
       row('Cámara', pick('Cámara', Object.entries(CAMS), camMode, (v) => { camMode = v; const st = H.get(); st.cam = v; H.set(st); })),
       h('div', { class: 'brr-row' }, dmgBtn, sndBtn),
@@ -1920,7 +1921,7 @@
 
   BM.register({
     id: 'barrio', n: 'Manejá por tu barrio', d: 'Tus calles reales vistas desde arriba, con semáforos, tránsito y entregas.', c: '#3a6b8f', create: barrio, skinLabel: 'Auto',
-    skins: [['rojo', 'Rojo', '#d3202a'], ['azul', 'Azul', '#1f5fe0'], ['amarillo', 'Amarillo', '#f2c21b'], ['verde', 'Verde', '#1e9e4a'], ['negro', 'Negro', '#23262d'], ['blanco', 'Blanco', '#f2f2f2'], ['naranja', 'Naranja', '#ff7a1a']],
+    skins: [['rojo', 'Rojo', '#d3202a'], ['azul', 'Azul', '#1f5fe0'], ['amarillo', 'Amarillo', '#f2c21b'], ['verde', 'Verde', '#1e9e4a'], ['negro', 'Negro', '#23262d'], ['blanco', 'Blanco', '#f2f2f2'], ['naranja', 'Naranja', '#ff7a1a'], ['celeste', 'Celeste', '#5fb3ec'], ['violeta', 'Violeta', '#6a3fb5'], ['bordo', 'Bordó', '#7a1f33'], ['plata', 'Plata', '#b8bec6'], ['turquesa', 'Turquesa', '#13a3a8']],
     art: '<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#b9b3a6"/><path d="M0 22h64M0 46h64M20 0v64M46 0v64" stroke="#4b4e54" stroke-width="9"/><path d="M0 22h64M20 0v64" stroke="#e0b43a" stroke-width="0.8" stroke-dasharray="3 3"/><rect x="26" y="26" width="14" height="14" fill="#b0603c"/><rect x="4" y="4" width="10" height="12" fill="#8e8e8a"/><rect x="52" y="52" width="9" height="9" fill="#6f8f4e"/><rect x="28" y="19" width="9" height="5" rx="1.2" fill="#d3202a"/><rect x="43" y="30" width="5" height="9" rx="1.2" fill="#f2f2f2"/><circle cx="16" cy="18" r="2" fill="#30d158"/></svg>',
     best: (s) => s.done ? `${s.done} entregas · récord ${s.best || 0} pts` : 'Nunca jugaste'
   });
