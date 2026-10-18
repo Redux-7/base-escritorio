@@ -12,8 +12,8 @@
   const SKIN = { rojo: '#d3202a', azul: '#1f5fe0', amarillo: '#f2c21b', verde: '#1e9e4a', negro: '#23262d', blanco: '#f2f2f2', naranja: '#ff7a1a' };
   // vehículos que podés manejar: largo, ancho, aceleración, velocidad máxima (m/s), distancia entre ejes, agarre, volante
   const VEH = {
-    formula80: { tank: 6000, n: 'F1 clásico (90s)', t: 'f1c', len: 4.5, wid: 2.05, acc: 9.5, vmax: 74, wb: 2.9, grip: 14, steer: 0.5 },
-    formula: { tank: 5000, n: 'Fórmula 1', t: 'f1', len: 5.6, wid: 2.0, acc: 11, vmax: 80, wb: 3.6, grip: 17, steer: 0.48 },
+    formula80: { tank: 6000, n: 'F1 clásico (90s)', t: 'f1c', len: 3.9, wid: 2.2, acc: 9.5, vmax: 74, wb: 2.9, grip: 14, steer: 0.5 },
+    formula: { tank: 5000, n: 'Fórmula 1', t: 'f1', len: 4.7, wid: 2.2, acc: 11, vmax: 80, wb: 3.6, grip: 17, steer: 0.48 },
     auto: { tank: 9000, n: 'Auto', t: 'auto', len: 4.4, wid: 1.9, acc: 4.6, vmax: 36, wb: 2.6, grip: 9.5, steer: 0.62 },
     deportivo: { tank: 6000, n: 'Deportivo', t: 'sport', len: 4.5, wid: 1.95, acc: 7, vmax: 50, wb: 2.6, grip: 11.5, steer: 0.6 },
     camioneta: { tank: 8000, n: 'Camioneta', t: 'pickup', len: 5.3, wid: 2.0, acc: 3.9, vmax: 33, wb: 3.2, grip: 8.5, steer: 0.56 },
@@ -706,7 +706,7 @@
       G.roads.forEach((r, ri) => { if (r.k > 6) return; r.p.forEach(([x, y], i) => { const d = x * x + y * y; if (d < bd && i < r.p.length - 1) { bd = d; best = [ri, i]; } }); });
       const r = G.roads[best[0]], A = r.p[best[1]], B = r.p[best[1] + 1], a = Math.atan2(B[1] - A[1], B[0] - A[0]);
       const off = r.o ? 0 : Math.min(r.w / 4, 3.2);
-      me = { fuel: 1, x: (A[0] + B[0]) / 2 - Math.sin(a) * off, y: (A[1] + B[1]) / 2 + Math.cos(a) * off, a, vf: 0, vr: 0, steer: 0, len: VEH[veh].len, wid: VEH[veh].wid, type: VEH[veh].t, V: VEH[veh], c: SKIN[H.get().skin] || '#d3202a', inLight: null, dmg: 0, hits: [] };
+      me = { fuel: 1, x: (A[0] + B[0]) / 2 - Math.sin(a) * off, y: (A[1] + B[1]) / 2 + Math.cos(a) * off, a, vf: 0, vr: 0, steer: 0, len: VEH[veh].len, wid: VEH[veh].wid, type: VEH[veh].t, V: VEH[veh], c: myColor(), inLight: null, dmg: 0, hits: [] };
       camX = me.x; camY = me.y;
     }
     function resetToRoad() {
@@ -814,6 +814,8 @@
     let lastCrash = 0;
     // daños: abolladuras en el punto del golpe (coordenadas del vehículo), y el total 0..1
     let dmgOn = H.get().noDmg !== true;
+    const isF1 = (t) => t === 'f1' || t === 'f1c';
+    function myColor(skinId) { const t = VEH[veh] ? VEH[veh].t : 'auto'; if (isF1(t)) return 'liv:' + (typeof liv === 'string' ? liv : 'pampa'); return SKIN[skinId || H.get().skin] || '#d3202a'; }
     function hurt(o, spd, lx, ly) {
       if (!dmgOn) { if (o === me) SND.crash(Math.min(0.8, (spd - 2) / 15)); return; }
       const sev = Math.max(0.02, Math.min(0.35, (spd - 2) / 32)); o.dmg = Math.min(1, (o.dmg || 0) + sev); if (o === me) SND.crash(sev * 2.5);
@@ -876,6 +878,9 @@
     function shade(hex, k) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const f = (v) => Math.max(0, Math.min(255, Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k)))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
     function sprite(T, col, L, Wd) {
       const key = T + col + L + Wd; let cvs = SPR.get(key); if (cvs) return cvs;
+      // pinturas inventadas de los Fórmula 1: [principal, segundo color, detalle]
+      const LIV = { pampa: ['#1d3f8f', '#6cb4ee', '#ffffff'], rayo: ['#f5c518', '#16171a', '#16171a'], bosque: ['#0f4d2e', '#c9a43a', '#c9a43a'], uva: ['#5b2a86', '#ffffff', '#f5c518'], medianoche: ['#14213d', '#fca311', '#fca311'], glaciar: ['#b9c0c8', '#13a3a8', '#1d2733'], tango: ['#6d1a2a', '#efe3c8', '#efe3c8'], fuego: ['#ff7a1a', '#16171a', '#d62828'] };
+      let LC = null; if (typeof col === 'string' && col.startsWith('liv:')) { LC = LIV[col.slice(4)] || LIV.pampa; col = LC[0]; }
       cvs = document.createElement('canvas'); cvs.width = Math.ceil((L + 0.6) * PX); cvs.height = Math.ceil((Wd + 0.6) * PX);
       const g = cvs.getContext('2d'); g.scale(PX, PX); g.translate(L / 2 + 0.3, Wd / 2 + 0.3);
       const body = (x0, x1, y0, y1, rf, rr) => { g.beginPath(); g.moveTo(x0 + rr, y0); g.lineTo(x1 - rf, y0); g.quadraticCurveTo(x1, y0, x1, y0 + rf); g.lineTo(x1, y1 - rf); g.quadraticCurveTo(x1, y1, x1 - rf, y1); g.lineTo(x0 + rr, y1); g.quadraticCurveTo(x0, y1, x0, y1 - rr); g.lineTo(x0, y0 + rr); g.quadraticCurveTo(x0, y0, x0 + rr, y0); g.closePath(); };
@@ -885,9 +890,10 @@
       const lights = (x1, x0, w) => { g.fillStyle = '#fff4cc'; g.fillRect(x1 - 0.12, -w / 2 + 0.12, 0.1, 0.38); g.fillRect(x1 - 0.12, w / 2 - 0.5, 0.1, 0.38); g.fillStyle = '#8a1a1a'; g.fillRect(x0 + 0.02, -w / 2 + 0.12, 0.1, 0.36); g.fillRect(x0 + 0.02, w / 2 - 0.48, 0.1, 0.36); };
       const hl = L / 2, hw = Wd / 2;
       if (T === 'f1c') {
-        // fórmula estilo principios de los 90 (diseño propio): trompa baja y larga, alerón delantero ancho,
-        // pontones largos con tomas de aire, toma de aire sobre el piloto, gomas traseras anchas y alerón trasero alto
-        const dark = '#141518', two = '#2b2e35';
+        // fórmula estilo principios de los 90 (diseño propio): trompa baja, alerón delantero ancho,
+        // pontones con tomas de aire, toma de aire sobre el piloto, gomas traseras anchas y alerón trasero alto
+        g.save(); g.scale(L / 4.5, Wd / 2.05); const hl = 2.25, hw = 1.025, Wd2 = 2.05;
+        const dark = '#141518', two = LC ? LC[1] : '#2b2e35', acc = LC ? LC[2] : '#e8e8e8';
         const tire = (x, y, w2, l2) => { g.fillStyle = '#0e0e0f'; g.beginPath(); g.roundRect(x - l2 / 2, y - w2 / 2, l2, w2, 0.1); g.fill(); g.fillStyle = 'rgba(255,255,255,.09)'; g.fillRect(x - l2 / 2 + 0.08, y - w2 / 2 + 0.05, l2 - 0.16, 0.05); g.fillRect(x - l2 / 2 + 0.08, y + w2 / 2 - 0.1, l2 - 0.16, 0.05); };
         const fx = hl - 0.95, rx = -hl + 0.78;
         // brazos de suspensión
@@ -896,8 +902,8 @@
         g.stroke();
         for (const sd of [-1, 1]) { tire(fx, sd * (hw - 0.26), 0.42, 0.6); tire(rx, sd * (hw - 0.31), 0.6, 0.74); }
         // alerón delantero ancho, delante de las ruedas
-        g.fillStyle = col; g.beginPath(); g.roundRect(hl - 0.36, -hw + 0.02, 0.26, Wd - 0.04, 0.05); g.fill();
-        g.fillStyle = dark; g.fillRect(hl - 0.4, -hw, 0.34, 0.06); g.fillRect(hl - 0.4, hw - 0.06, 0.34, 0.06); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(hl - 0.24, -hw + 0.06, 0.04, Wd - 0.12);
+        g.fillStyle = col; g.beginPath(); g.roundRect(hl - 0.36, -hw + 0.02, 0.26, Wd2 - 0.04, 0.05); g.fill();
+        g.fillStyle = dark; g.fillRect(hl - 0.4, -hw, 0.34, 0.06); g.fillRect(hl - 0.4, hw - 0.06, 0.34, 0.06); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(hl - 0.24, -hw + 0.06, 0.04, Wd2 - 0.12);
         // carrocería: trompa angosta, cockpit, pontones largos que se angostan hacia atrás
         const body = () => { g.beginPath(); g.moveTo(hl - 0.08, -0.06); g.quadraticCurveTo(hl - 0.02, 0, hl - 0.08, 0.06); g.lineTo(fx + 0.1, 0.17); g.lineTo(0.62, 0.24); g.lineTo(0.5, 0.36); g.lineTo(0.38, 0.66); g.quadraticCurveTo(0.3, 0.74, 0.1, 0.74); g.lineTo(-1.0, 0.7); g.quadraticCurveTo(-1.35, 0.6, -1.5, 0.42); g.lineTo(rx + 0.2, 0.3); g.lineTo(-hl + 0.38, 0.24); g.lineTo(-hl + 0.38, -0.24); g.lineTo(rx + 0.2, -0.3); g.lineTo(-1.5, -0.42); g.quadraticCurveTo(-1.35, -0.6, -1.0, -0.7); g.lineTo(0.1, -0.74); g.quadraticCurveTo(0.3, -0.74, 0.38, -0.66); g.lineTo(0.5, -0.36); g.lineTo(0.62, -0.24); g.lineTo(fx + 0.1, -0.17); g.closePath(); };
         body(); g.fillStyle = paint(-hl, hl, -0.75, 0.75); g.fill();
@@ -910,7 +916,7 @@
         // tomas de aire de los pontones
         g.fillStyle = dark; for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(0.33, 0.56 * sd, 0.07, 0.15, 0, 0, TAU); g.fill(); }
         // número en la trompa (círculo blanco)
-        g.fillStyle = '#fff'; g.beginPath(); g.arc(fx + 0.55, 0, 0.13, 0, TAU); g.fill(); g.fillStyle = '#111'; g.fillRect(fx + 0.53, -0.07, 0.04, 0.14);
+        g.fillStyle = acc; g.fillRect(fx + 0.1, -0.03, 1.2, 0.06); g.fillStyle = '#fff'; g.beginPath(); g.arc(fx + 0.55, 0, 0.13, 0, TAU); g.fill(); g.fillStyle = '#111'; g.fillRect(fx + 0.53, -0.07, 0.04, 0.14);
         // cockpit abierto, parabrisas y casco
         g.fillStyle = 'rgba(160,185,210,.55)'; g.beginPath(); g.ellipse(0.42, 0, 0.06, 0.2, 0, 0, TAU); g.fill();
         g.fillStyle = '#0b0c0e'; g.beginPath(); g.ellipse(0.08, 0, 0.36, 0.2, 0, 0, TAU); g.fill();
@@ -923,22 +929,25 @@
         g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(-1.15, -0.04, 0.85, 0.05);
         // alerón trasero alto con derivas
         g.fillStyle = dark; g.fillRect(-hl - 0.04, -0.78, 0.5, 0.07); g.fillRect(-hl - 0.04, 0.71, 0.5, 0.07);
-        g.fillStyle = col; g.fillRect(-hl + 0.0, -0.74, 0.42, 1.48); g.fillStyle = two; g.fillRect(-hl + 0.12, -0.74, 0.12, 1.48);
+        g.fillStyle = col; g.fillRect(-hl + 0.0, -0.74, 0.42, 1.48); g.fillStyle = two; g.fillRect(-hl + 0.12, -0.74, 0.12, 1.48); g.fillStyle = acc; g.fillRect(-hl + 0.3, -0.74, 0.05, 1.48);
         g.fillStyle = '#ff2b2b'; g.fillRect(-hl - 0.03, -0.05, 0.06, 0.1);
+        g.restore();
       } else if (T === 'f1') {
+        g.save(); g.scale(L / 5.6, Wd / 2.0); const hl = 2.8, hw = 1.0, Wd2 = 2.0, two = LC ? LC[1] : '#1a1a1a', acc = LC ? LC[2] : 'rgba(255,255,255,.75)';
         // fórmula: ruedas al aire, alerones adelante y atrás, piloto con casco y halo
         const tire = (x, y) => { g.fillStyle = '#121212'; g.beginPath(); g.roundRect(x - 0.36, y - 0.22, 0.72, 0.44, 0.08); g.fill(); g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x - 0.3, y - 0.03, 0.6, 0.06); };
         g.strokeStyle = '#2b2b2b'; g.lineWidth = 0.06; g.beginPath(); for (const [x, y] of [[hl - 0.8, hw - 0.22], [-hl + 0.9, hw - 0.22]]) for (const sd of [-1, 1]) { g.moveTo(x + 0.15, 0.22 * sd); g.lineTo(x, y * sd); g.moveTo(x - 0.2, 0.25 * sd); g.lineTo(x, y * sd); } g.stroke();
         for (const sd of [-1, 1]) { tire(hl - 0.8, sd * (hw - 0.22)); tire(-hl + 0.9, sd * (hw - 0.24)); }
-        g.fillStyle = shade(col, -0.25); g.fillRect(hl - 0.34, -hw + 0.05, 0.3, Wd - 0.1); g.fillStyle = '#1a1a1a'; g.fillRect(hl - 0.36, -hw + 0.02, 0.36, 0.1); g.fillRect(hl - 0.36, hw - 0.12, 0.36, 0.1);
+        g.fillStyle = shade(col, -0.25); g.fillRect(hl - 0.34, -hw + 0.05, 0.3, Wd2 - 0.1); g.fillStyle = '#1a1a1a'; g.fillRect(hl - 0.36, -hw + 0.02, 0.36, 0.1); g.fillRect(hl - 0.36, hw - 0.12, 0.36, 0.1);
         g.beginPath(); g.moveTo(hl - 0.25, -0.13); g.lineTo(0.95, -0.27); g.lineTo(0.45, -0.72); g.lineTo(-1.5, -0.7); g.lineTo(-2.05, -0.36); g.lineTo(-hl + 0.45, -0.26); g.lineTo(-hl + 0.45, 0.26); g.lineTo(-2.05, 0.36); g.lineTo(-1.5, 0.7); g.lineTo(0.45, 0.72); g.lineTo(0.95, 0.27); g.lineTo(hl - 0.25, 0.13); g.closePath();
         g.fillStyle = paint(-hl, hl, -0.75, 0.75); g.fill(); g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 0.04; g.stroke();
-        g.fillStyle = 'rgba(255,255,255,.75)'; g.fillRect(-1.9, -0.06, 2.6, 0.12);
+        g.save(); g.clip(); g.fillStyle = two; g.fillRect(-1.6, -0.8, 1.9, 0.32); g.fillRect(-1.6, 0.48, 1.9, 0.32); g.restore(); g.fillStyle = acc; g.fillRect(-1.9, -0.06, 2.6, 0.12);
         g.fillStyle = '#0d0f12'; g.beginPath(); g.ellipse(0.15, 0, 0.48, 0.24, 0, 0, TAU); g.fill();
         g.fillStyle = '#f2d230'; g.beginPath(); g.arc(0.05, 0, 0.17, 0, TAU); g.fill(); g.fillStyle = '#1b2a3a'; g.fillRect(0.12, -0.11, 0.06, 0.22);
         g.strokeStyle = '#2a2a2a'; g.lineWidth = 0.07; g.beginPath(); g.arc(0.05, 0, 0.3, -1.3, 1.3); g.moveTo(0.35, 0); g.lineTo(0.55, 0); g.stroke();
-        g.fillStyle = '#16181c'; g.fillRect(-hl + 0.02, -0.85, 0.42, 1.7); g.fillStyle = col; g.fillRect(-hl + 0.1, -0.85, 0.12, 1.7);
+        g.fillStyle = '#16181c'; g.fillRect(-hl + 0.02, -0.85, 0.42, 1.7); g.fillStyle = two; g.fillRect(-hl + 0.1, -0.85, 0.12, 1.7);
         g.fillStyle = '#ff3030'; g.fillRect(-hl + 0.02, -0.06, 0.08, 0.12);
+        g.restore();
       } else if (T === 'moto') {
         g.fillStyle = '#111'; g.beginPath(); g.ellipse(hl - 0.32, 0, 0.32, 0.1, 0, 0, TAU); g.ellipse(-hl + 0.32, 0, 0.32, 0.1, 0, 0, TAU); g.fill();
         g.fillStyle = paint(-0.3, 0.3, -0.3, 0.3); g.beginPath(); g.ellipse(0.25, 0, 0.42, 0.2, 0, 0, TAU); g.fill();
@@ -1533,6 +1542,7 @@
 .brr-len{font-weight:700;color:#ffd60a}
 .brr-tr{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center}
 .brr-tr .mg-btn{text-align:left}
+.brr-opts{left:auto;right:12px;width:270px}.brr-l{display:grid;gap:4px}.brr-l small{font-weight:700;color:#aab1c2}.brr-l .mg-pick{width:100%}
 .brr-res{border-collapse:collapse;width:100%;font-size:14px}.brr-res td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.08)}.brr-res tr.me td{color:#ffd60a;font-weight:800}
 `;
     if (!document.getElementById('st-barrio-race')) document.head.append(h('style', { id: 'st-barrio-race', text: RCSS }));
@@ -1625,7 +1635,7 @@
           btn('Volver a manejar', () => { closeOver(root); mode = mode === 'carrera' ? 'libre' : mode; syncModeSeg(); state = 'run'; run(); })));
     }
     function syncRaceBtns() { if (restartBtn) restartBtn.style.display = race ? '' : 'none'; if (backBtn) backBtn.style.display = race ? 'none' : ''; }
-    function syncModeSeg() { syncRaceBtns(); if (modeSeg) for (const b of modeSeg.children) b.classList.toggle('on', b.textContent === ({ entregas: 'Entregas', libre: 'Paseo libre', carrera: '🏁 Carreras' })[mode]); }
+    function syncModeSeg() { syncRaceBtns(); if (modeSeg) for (const b of modeSeg.children) b.classList.toggle('on', b.textContent === ({ entregas: 'Entregas', libre: 'Libre', carrera: '🏁 Carreras' })[mode]); }
     function randomTrack() {
       for (let tries = 0; tries < 30; tries++) {
         const R = 170 + Math.random() * 160, a0 = Math.random() * TAU, wps = [];
@@ -1733,7 +1743,7 @@
       const f1 = me.type === 'f1' || me.type === 'f1c';
       for (let i = 0; i < n; i++) {
         const [nm, col, ty0] = RIV[i], ty = f1 ? me.type : ty0, V = VEH[f1 ? (me.type === 'f1c' ? 'formula80' : 'formula') : ty === 'sport' ? 'deportivo' : ty === 'pickup' ? 'camioneta' : 'auto'];
-        const c = { racer: true, name: nm, c: col, type: ty, len: V.len, wid: V.wid, vmax: f1 ? (me.type === 'f1c' ? 70 : 76) : 38, lat: f1 ? (me.type === 'f1c' ? 13 : 15) : 7.2, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
+        const LV = Object.keys(LIVN).filter(x => x !== liv), c = { racer: true, name: nm, c: f1 ? 'liv:' + LV[i % LV.length] : col, type: ty, len: V.len, wid: V.wid, vmax: f1 ? (me.type === 'f1c' ? 70 : 76) : 38, lat: f1 ? (me.type === 'f1c' ? 13 : 15) : 7.2, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
         c.P = place(c, i); cars.push(c);
       }
       const P0 = place(me, n); me.vf = me.vr = 0; me.fuel = 1; me.steer = 0; camX = me.x; camY = me.y;
@@ -1842,6 +1852,7 @@
     const key = (e) => {
       SND.init();
       if ((e.key === 'h' || e.key === 'H') && state === 'run') { SND.horn(true); return true; }
+      if (e.key === 'f' || e.key === 'F') { toggleFull(); return true; }
       if (e.key === '+' || e.key === '=') { setZoom(zoomMul * 1.15); return true; }
       if (e.key === '-' || e.key === '_') { setZoom(zoomMul / 1.15); return true; }
       if (e.key === '0') { setZoom(1); return true; }
@@ -1861,21 +1872,36 @@
       const k = KEYS[e.key]; if (!k) return false; keys[k] = true; return true;
     };
     let modeSeg = null, backBtn = null, restartBtn = null;
+    // las opciones van en un panel aparte para que la barra entre en una sola línea
+    const LIVN = { pampa: 'Pampa (azul, celeste y blanco)', rayo: 'Rayo (amarillo y negro)', bosque: 'Bosque (verde y dorado)', uva: 'Uva (violeta, blanco y amarillo)', medianoche: 'Medianoche (azul noche y naranja)', glaciar: 'Glaciar (plata y turquesa)', tango: 'Tango (bordó y crema)', fuego: 'Fuego (naranja, negro y rojo)' };
+    let liv = LIVN[H.get().liv] ? H.get().liv : 'pampa';
+    const dmgBtn = btn(dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no', () => { dmgOn = !dmgOn; if (!dmgOn && me) { me.dmg = 0; me.hits = []; } dmgBtn.textContent = dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no'; const st = H.get(); st.noDmg = !dmgOn; H.set(st); say(dmgOn ? 'Daños activados' : 'Daños desactivados: los choques no rompen el auto'); });
+    const sndBtn = btn(sndOn ? '🔊 Sonido: sí' : '🔇 Sonido: no', () => { SND.init(); SND.on(!sndOn); sndBtn.textContent = sndOn ? '🔊 Sonido: sí' : '🔇 Sonido: no'; const st = H.get(); st.snd = sndOn; H.set(st); });
+    const row = (label, el2) => h('label', { class: 'brr-l' }, h('small', { text: label }), el2);
+    const optPanel = h('div', { class: 'brr-panel brr-opts', style: 'display:none' },
+      h('b', { text: '⚙ Opciones' }),
+      row('Clima', pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); })),
+      row('Vehículo', pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); me.c = myColor(); say(`Ahora manejás: ${V.n}`); } })),
+      row('Pintura de los Fórmula 1', pick('Pintura', Object.entries(LIVN), liv, (v) => { liv = v; const s = H.get(); s.liv = v; H.set(s); if (me) me.c = myColor(); })),
+      row('Tablero', pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); })),
+      row('Cámara', pick('Cámara', Object.entries(CAMS), camMode, (v) => { camMode = v; const st = H.get(); st.cam = v; H.set(st); })),
+      h('div', { class: 'brr-row' }, dmgBtn, sndBtn),
+      btn('Listo', () => toggleOpts(false), 'primary'));
+    root.append(optPanel);
+    function toggleOpts(v) { const on = v == null ? optPanel.style.display === 'none' : v; optPanel.style.display = on ? '' : 'none'; }
+    // pantalla completa (sólo el juego)
+    function toggleFull() { try { if (document.fullscreenElement) document.exitFullscreen(); else root.requestFullscreen({ navigationUI: 'hide' }); } catch {} }
     const tools = [
-      pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); }),
-      pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); }),
-      pick('Cámara', Object.entries(CAMS), camMode, (v) => { camMode = v; const st = H.get(); st.cam = v; H.set(st); }),
-      pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); say(`Ahora manejás: ${V.n}`); } }),
-      modeSeg = seg([['entregas', 'Entregas'], ['libre', 'Paseo libre'], ['carrera', '🏁 Carreras']], mode, (v) => {
+      modeSeg = seg([['entregas', 'Entregas'], ['libre', 'Libre'], ['carrera', '🏁 Carreras']], mode, (v) => {
         if (v === 'carrera') { if (G && me) raceMenu(); return; }
         const was = !!race; endRace(); mode = v; const s = H.get(); s.mode = v; H.set(s); job = null;
         if (state === 'run' || was) { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); }
       }),
       btn('🗺 Zona', () => menu()),
       (backBtn = btn('↩ A la calle', () => { if (state === 'run') resetToRoad(); })),
-      (restartBtn = btn('↺ Reiniciar carrera', () => { if (race) startRace(race.tr); })),
-      (() => { const b = btn(dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no', () => { dmgOn = !dmgOn; if (!dmgOn && me) { me.dmg = 0; me.hits = []; } b.textContent = dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no'; const st = H.get(); st.noDmg = !dmgOn; H.set(st); say(dmgOn ? 'Daños activados' : 'Daños desactivados: los choques no rompen el auto'); }); return b; })(),
-      (() => { const b = btn(sndOn ? '🔊 Sonido' : '🔇 Sin sonido', () => { SND.init(); SND.on(!sndOn); b.textContent = sndOn ? '🔊 Sonido' : '🔇 Sin sonido'; const st = H.get(); st.snd = sndOn; H.set(st); }); return b; })()
+      (restartBtn = btn('↺ Reiniciar', () => { if (race) startRace(race.tr); })),
+      btn('⚙ Opciones', () => toggleOpts()),
+      btn('⛶ Pantalla completa', () => toggleFull())
     ];
     syncRaceBtns();
     requestAnimationFrame(async () => {
@@ -1885,8 +1911,8 @@
     });
     return {
       el: root, tools, key,
-      setSkin: (id) => { if (me) me.c = SKIN[id] || me.c; },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · P pausa. Podés ir por el borde de la vereda, más despacio. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
+      setSkin: (id) => { if (me) me.c = myColor(id); },
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · F pantalla completa · P pausa. Podés ir por el borde de la vereda, más despacio. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };
