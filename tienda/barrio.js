@@ -12,8 +12,8 @@
   const SKIN = { rojo: '#d3202a', azul: '#1f5fe0', amarillo: '#f2c21b', verde: '#1e9e4a', negro: '#23262d', blanco: '#f2f2f2', naranja: '#ff7a1a', celeste: '#5fb3ec', violeta: '#6a3fb5', bordo: '#7a1f33', plata: '#b8bec6', turquesa: '#13a3a8' };
   // vehículos que podés manejar: largo, ancho, aceleración, velocidad máxima (m/s), distancia entre ejes, agarre, volante
   const VEH = {
-    formula80: { tank: 6000, n: 'F1 clásico (90s)', t: 'f1c', len: 3.9, wid: 2.2, acc: 9.5, vmax: 74, wb: 2.5, grip: 16, steer: 0.72, sf: 18, df: 45 },
-    formula: { tank: 5000, n: 'Fórmula 1', t: 'f1', len: 4.7, wid: 2.2, acc: 11, vmax: 80, wb: 2.9, grip: 19, steer: 0.72, sf: 18, df: 40 },
+    formula80: { tank: 6000, n: 'F1 clásico (90s)', t: 'f1c', len: 3.9, wid: 2.2, acc: 9.5, vmax: 74, wb: 2.8, grip: 16, steer: 0.5, sf: 13, df: 45, sr: 4.5 },
+    formula: { tank: 5000, n: 'Fórmula 1', t: 'f1', len: 4.7, wid: 2.2, acc: 11, vmax: 80, wb: 3.1, grip: 19, steer: 0.48, sf: 13, df: 40, sr: 4.5 },
     auto: { tank: 9000, n: 'Auto', t: 'auto', len: 4.4, wid: 1.9, acc: 4.6, vmax: 36, wb: 2.6, grip: 9.5, steer: 0.62 },
     deportivo: { tank: 6000, n: 'Deportivo', t: 'sport', len: 4.5, wid: 1.95, acc: 7, vmax: 50, wb: 2.6, grip: 11.5, steer: 0.6 },
     camioneta: { tank: 8000, n: 'Camioneta', t: 'pickup', len: 5.3, wid: 2.0, acc: 3.9, vmax: 33, wb: 3.2, grip: 8.5, steer: 0.56 },
@@ -752,7 +752,7 @@
       const thr = keys.up ? 1 : 0, brk = keys.down ? 1 : 0, hb = keys.hb;
       const V = me.V, maxS = V.steer / (1 + Math.abs(me.vf) / (V.sf || 8));
       const target = ((keys.left ? -1 : 0) + (keys.right ? 1 : 0)) * maxS + ((me.dmg || 0) > 0.45 && Math.abs(me.vf) > 3 ? (me.dmg - 0.45) * 0.06 : 0);
-      me.steer += (target - me.steer) * Math.min(1, dt * 7);
+      me.steer += (target - me.steer) * Math.min(1, dt * (V.sr || 7)); // los fórmula tienen la dirección más suave
       const wet = isRain() ? 0.68 : 1;
       let a = 0;
       const empty = me.fuel <= 0;
