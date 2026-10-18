@@ -24,13 +24,13 @@
     camion: { tank: 12000, n: 'Camión', t: 'truck', len: 9, wid: 2.5, acc: 2.1, vmax: 25, wb: 5, grip: 7, steer: 0.56 }
   };
   // hash para que lo "al azar" del mapa salga siempre igual
-  const PARK = 2.4; // ancho del carril para estacionar, a cada lado (calles de barrio y avenidas)
+  const PARK = 2.05; // ancho del carril para estacionar, a cada lado (calles de barrio y avenidas)
   const hsh = (a, b) => { let x = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263); x = Math.imul(x ^ (x >>> 13), 1274126177); return ((x ^ (x >>> 16)) >>> 0) / 4294967296; };
 
   // ===================== preparar el mapa =====================
   function prepare(m) {
     const S = 0.5;
-    const roads = m.roads.map((r) => { const p = []; for (let i = 0; i < r.p.length; i += 2) p.push([r.p[i] * S, r.p[i + 1] * S]); const cw = r.k >= 7 ? r.w : r.w * 1.18 + 0.6, pk = r.k >= 2 && r.k <= 5 ? PARK : 0; return { n: r.n, k: r.k, w: cw + pk * 2, cw, pk, o: r.o, p, nd: r.nd && r.nd.length === p.length ? r.nd : null }; });
+    const roads = m.roads.map((r) => { const p = []; for (let i = 0; i < r.p.length; i += 2) p.push([r.p[i] * S, r.p[i + 1] * S]); const cw = r.k >= 7 ? r.w : r.w * 1.03 + 0.3, pk = r.k >= 2 && r.k <= 5 ? PARK : 0; return { n: r.n, k: r.k, w: cw + pk * 2, cw, pk, o: r.o, p, nd: r.nd && r.nd.length === p.length ? r.nd : null }; });
     // nodos del grafo: los puntos compartidos entre calles son esquinas
     roads.forEach((r, ri) => { r.ri = ri; });
     const links = new Map();
@@ -305,11 +305,12 @@
       }
       return true;
     }
-    function homeSpot(x0, y0) {
+    function homeSpot(x0, y0, maxD = 1e9) {
       const cands = [];
       G.roads.forEach((r, ri) => { if (r.k < 4 || r.k > 5) return; for (let i = 0; i < r.p.length - 1; i++) { const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 32) continue; cands.push({ ri, i, L, d: Math.hypot((ax + bx) / 2 - x0, (ay + by) / 2 - y0) }); } });
       cands.sort((a, b) => a.d - b.d);
       for (const c of cands.slice(0, 120)) {
+        if (c.d > maxD + c.L / 2) break;
         const r = G.roads[c.ri], [ax, ay] = r.p[c.i], ux = (r.p[c.i + 1][0] - ax) / c.L, uy = (r.p[c.i + 1][1] - ay) / c.L;
         // el punto del tramo más cercano a donde estás
         const t0 = Math.max(14, Math.min(c.L - 14, (x0 - ax) * ux + (y0 - ay) * uy));
@@ -377,6 +378,38 @@
       if ((was < 1 && home.door >= 1) || (was > 0 && home.door <= 0)) SND.blip(140, 0.12, 'square', 0.04);
       if (near && !fitsGarage() && v < 4 && Math.abs(me.vf) < 3 && !home.warned) { home.warned = true; say(`El ${VEH[veh].n.toLowerCase()} no entra en el garaje`); }
       if (!near) home.warned = false;
+    }
+    // elegir la Casa con un clic en el mapa: se ve una casa transparente donde quedaría
+    let picking = null;
+    const toWorld = (sx, sy) => { const r = cv.getBoundingClientRect(), dx = (sx - r.left - W / 2) / zoom, dy = (sy - r.top - Hh / 2) / zoom, c = Math.cos(-camRot), s2 = Math.sin(-camRot); return [camX + dx * c - dy * s2, camY + dx * s2 + dy * c]; };
+    function startPick() {
+      picking = { prev: null, zoom0: zoomMul, t: 0 }; setZoom(Math.min(zoomMul, 0.6)); keys = {};
+      cv.style.cursor = 'crosshair';
+      msg.hidden = false; msg.textContent = '🏠 Tocá la cuadra donde querés tu Casa · Esc para cancelar';
+    }
+    function endPick(ok) {
+      if (!picking) return; setZoom(picking.zoom0); picking = null; cv.style.cursor = ''; msg.hidden = true;
+      if (!ok) say('No cambiaste la Casa');
+    }
+    function pickAt(sx, sy) {
+      const [x, y] = toWorld(sx, sy); return homeSpot(x, y, 45);
+    }
+    cv.addEventListener('pointermove', (e) => { if (!picking || performance.now() - picking.t < 70) return; picking.t = performance.now(); picking.prev = pickAt(e.clientX, e.clientY); });
+    cv.addEventListener('pointerdown', (e) => {
+      if (!picking) return; e.preventDefault(); e.stopPropagation();
+      if (e.button === 2) return endPick(false);
+      const H0 = pickAt(e.clientX, e.clientY);
+      if (!H0) { say('Ahí no entra la Casa: probá más cerca de una calle de barrio', true); SND.blip(180, 0.2, 'square', 0.08); return; }
+      const st = H.get(); st.casa = st.casa || {}; st.casa[mapId] = { ri: H0.ri, i: H0.i, t: +H0.t.toFixed(1), sd: H0.sd }; H.set(st);
+      const wasIn = homeIn(); buildHome(); if (wasIn) homeStart(); endPick(true); say('🏠 Tu Casa ahora está en ' + (G.roads[H0.ri].n || 'esta cuadra')); SND.blip(660, 0.15, 'triangle', 0.12);
+    }, true);
+    function drawPickGhost() {
+      const P0 = picking && picking.prev; if (!P0) return;
+      ctx.save(); ctx.translate(P0.ex, P0.ey); ctx.transform(P0.ux, P0.uy, P0.vx, P0.vy, 0, 0);
+      ctx.globalAlpha = 0.55 + Math.sin(clock * 6) * 0.15; ctx.fillStyle = '#2f6fd1'; ctx.fillRect(-8.6, 3.3, 18.6, 15.7);
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.4; ctx.strokeRect(-8.6, 3.3, 18.6, 15.7);
+      ctx.fillStyle = '#fff'; ctx.fillRect(HL.gu - 2, -0.3, 4, HL.g0); ctx.font = '800 4px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🏠', 1, 11);
+      ctx.restore();
     }
     function homeStart() {
       // arrancás adentro del garaje, mirando a la calle
@@ -605,7 +638,7 @@
       // huellas de las ruedas, parches, tapas de cloaca y grietas
       for (const r of near) {
         if (r.k >= 7) continue;
-        const lanes = r.cw >= 9 ? [-r.cw / 4, r.cw / 4] : [0];
+        const lanes = r.cw >= 8 ? [-r.cw / 4, r.cw / 4] : [0];
         g.lineCap = 'butt';
         for (const lc of lanes) for (const tr of [-0.85, 0.85]) { offPath(g, r.p, lc + tr); g.strokeStyle = 'rgba(0,0,0,.075)'; g.lineWidth = 0.55; g.stroke(); }
         for (let i = 0; i < r.p.length - 1; i++) {
@@ -633,12 +666,12 @@
       for (const r of near) {
         if (r.k === 8 || r.k === 7) continue;
         g.lineCap = 'butt';
-        if (!r.o && r.cw >= 9) {
+        if (!r.o && r.cw >= 8) {
           if (r.k <= 3) { for (const off of [-0.2, 0.2]) { offPath(g, r.p, off); g.strokeStyle = '#e0b43a'; g.lineWidth = 0.18; g.setLineDash([]); g.stroke(); } }
           else { path(r.p); g.strokeStyle = 'rgba(235,190,70,.85)'; g.lineWidth = 0.16; g.setLineDash([3, 4]); g.stroke(); }
         }
-        if (r.cw >= 13) for (const off of r.o ? [-r.cw / 6, r.cw / 6] : [-r.cw / 4, r.cw / 4]) { offPath(g, r.p, off); g.strokeStyle = 'rgba(240,240,240,.7)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
-        else if (r.o && r.cw >= 9) { path(r.p); g.strokeStyle = 'rgba(240,240,240,.6)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
+        if (r.cw >= 12) for (const off of r.o ? [-r.cw / 6, r.cw / 6] : [-r.cw / 4, r.cw / 4]) { offPath(g, r.p, off); g.strokeStyle = 'rgba(240,240,240,.7)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
+        else if (r.o && r.cw >= 8.5) { path(r.p); g.strokeStyle = 'rgba(240,240,240,.6)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
         if (r.pk) for (const off of [-r.cw / 2, r.cw / 2]) { offPath(g, r.p, off); g.strokeStyle = 'rgba(240,240,236,.42)'; g.lineWidth = 0.12; g.setLineDash([2.2, 3.4]); g.stroke(); }
         g.setLineDash([]);
       }
@@ -1536,6 +1569,7 @@
       if (race) drawRaceTrack();
       drawCar(me, true);
       if (home && Math.abs(home.ex - camX) < hwv + 30 && Math.abs(home.ey - camY) < hhv + 30) drawHome();
+      if (picking) drawPickGhost();
       // humo del motor cuando el auto está muy golpeado
       if ((me.dmg || 0) > 0.55 && state === 'run') {
         if (smoke.length < 60 && Math.random() < (me.dmg - 0.45) * 0.7) { const fx = me.x + Math.cos(me.a) * me.len * 0.32, fy = me.y + Math.sin(me.a) * me.len * 0.32; smoke.push([fx - Math.cos(me.a) * 0.6, fy - Math.sin(me.a) * 0.6, (Math.random() - 0.5) * 0.8 - Math.cos(me.a) * me.vf * 0.15, (Math.random() - 0.5) * 0.8 - Math.sin(me.a) * me.vf * 0.15, 1.6]); }
@@ -2156,6 +2190,7 @@
     addEventListener('keyup', keyUp);
     const key = (e) => {
       SND.init();
+      if (picking) { if (e.key === 'Escape') endPick(false); return true; }
       if ((e.key === 'h' || e.key === 'H') && state === 'run') { SND.horn(true); return true; }
       if (e.key === 'f' || e.key === 'F') { toggleFull(); return true; }
       if (e.key === '+' || e.key === '=') { setZoom(zoomMul * 1.15); return true; }
@@ -2202,12 +2237,7 @@
       h('div', { class: 'brr-row' }, dmgBtn, sndBtn),
       h('div', { class: 'brr-row' },
         btn('🏠 Volver a Casa', () => { if (!G || !me || race) return; if (!home) return say('Todavía no hay una Casa en este mapa'); if (!homeStart()) { const [x, y] = homeW(HL.gu, -4); me.x = x; me.y = y; me.a = Math.atan2(home.uy, home.ux); me.vf = me.vr = 0; say(`El ${VEH[veh].n.toLowerCase()} no entra en el garaje: quedaste en la puerta`); } else say('🏠 Estás en el garaje de Casa'); toggleOpts(false); }),
-        btn('📍 Mudar la Casa acá', () => {
-          if (!G || !me) return;
-          const H0 = homeSpot(me.x, me.y); if (!H0) return say('No encontré lugar para la Casa cerca: probá en otra cuadra', true);
-          const st = H.get(); st.casa = st.casa || {}; st.casa[mapId] = { ri: H0.ri, i: H0.i, t: +H0.t.toFixed(1), sd: H0.sd }; H.set(st);
-          buildHome(); say('🏠 Tu Casa ahora está en ' + (G.roads[H0.ri].n || 'esta cuadra')); toggleOpts(false);
-        })),
+        btn('📍 Elegir dónde está Casa', () => { if (!G || !me || race) return; toggleOpts(false); startPick(); })),
       btn('Listo', () => toggleOpts(false), 'primary'));
     root.append(optPanel);
     function toggleOpts(v) { const on = v == null ? optPanel.style.display === 'none' : v; optPanel.style.display = on ? '' : 'none'; }
@@ -2234,7 +2264,7 @@
     return {
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = myColor(id); },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · F pantalla completa · P pausa. Podés ir por el borde de la vereda, más despacio. Tu Casa tiene garaje: entrá despacio, quedate quieto adentro y el auto queda guardado (con el tanque lleno y arreglado); en Opciones podés volver a Casa o mudarla a donde estás. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · F pantalla completa · P pausa. Podés ir por el borde de la vereda, más despacio. Tu Casa tiene garaje: entrá despacio, quedate quieto adentro y el auto queda guardado (con el tanque lleno y arreglado); en Opciones podés volver a Casa o elegir con un clic en el mapa dónde querés que esté. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };
