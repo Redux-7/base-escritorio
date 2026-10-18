@@ -1765,56 +1765,50 @@
       if (mode === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras');
       run();
     }
+    // ---------- el mapa del juego: 5 km a la redonda de un punto fijo de Morón (se baja una sola vez) ----------
+    const FIXED = { q: 'Antonio Rivero 1463, Morón, Buenos Aires, Argentina', alt: 'Antonio Rivero 1463, Morón', r: 5000, name: 'Morón · mapa del juego' };
+    const isFixed = (x) => x && String(x.name || '').startsWith(FIXED.name);
     async function menu(err) {
       if (race || edit) { race = null; edit = null; editPanel && editPanel.remove(); hud.style.display = ''; }
       state = 'menu'; cancelAnimationFrame(raf); closeOver(root);
       const box = h('div', { class: 'mg-over br-menu' });
       const card = h('div', { class: 'mg-over-card br-card' });
       box.append(card); root.append(box);
-      card.append(h('b', { text: 'Manejá por tu barrio' }), h('span', { text: 'Elegí tu zona: se bajan las calles reales (OpenStreetMap) y queda guardado para jugar sin internet.' }));
-      if (err) card.append(h('p', { class: 'br-err', text: err }));
+      card.append(h('b', { text: 'Manejá por tu barrio' }));
       if (!host.map) { card.append(h('p', { class: 'br-err', text: 'Este juego necesita Base 2.27 o más nueva. Actualizá Base y volvé a abrirlo.' })); return; }
       const saved = await host.map.list().catch(() => []);
-      if (saved.length) {
-        const ul = h('div', { class: 'br-list' });
-        for (const s of saved) {
-          const row = h('div', { class: 'br-row' }, h('button', { class: 'mg-btn primary', type: 'button', text: '▶ ' + s.name.split(',').slice(0, 3).join(',') }), h('small', { text: (s.size / 1048576).toFixed(1) + ' MB' }));
-          row.firstChild.onclick = () => loadMap(s.id);
-          const del = h('button', { class: 'mg-btn', type: 'button', text: 'Borrar', title: 'Borrar este mapa' }); del.onclick = async () => { await host.map.remove(s.id); menu(); };
-          row.append(del); ul.append(row);
-        }
-        card.append(h('small', { class: 'br-sub', text: 'Tus zonas guardadas' }), ul);
-      }
-      const inp = h('input', { class: 'br-in', type: 'text', placeholder: 'Calle y altura, barrio o ciudad (ej.: Av. Corrientes 1500, CABA)' });
-      let rad = 5000;
-      const radSeg = seg([['1500', '1,5 km'], ['3000', '3 km'], ['5000', '5 km']], '5000', (v) => { rad = +v; });
-      const go = h('button', { class: 'mg-btn primary', type: 'button', text: 'Buscar' });
-      const res = h('div', { class: 'br-list' }), info = h('p', { class: 'br-info' });
-      const search = async () => {
-        const q = inp.value.trim(); if (q.length < 3) return;
-        res.replaceChildren(h('small', { text: 'Buscando…' }));
-        const r = await host.map.search(q).catch((e) => ({ ok: false, error: e.message }));
-        res.replaceChildren();
-        if (!r.ok) { res.append(h('small', { class: 'br-err', text: r.error || 'No pude buscar' })); return; }
-        if (!r.list.length) { res.append(h('small', { text: 'No encontré esa dirección. Probá con la ciudad (ej.: "Av. Corrientes 1500, CABA").' })); return; }
-        for (const x of r.list) {
-          const b = h('button', { class: 'br-res', type: 'button', text: x.name });
-          b.onclick = async () => {
-            res.replaceChildren(); info.textContent = 'Bajando las calles… puede tardar un minuto (o dos si elegiste 5 km).';
-            const d = await host.map.download({ lat: x.lat, lon: x.lon, r: rad, name: x.name }).catch((e) => ({ ok: false, error: e.message }));
-            if (!d.ok) { info.textContent = ''; res.append(h('small', { class: 'br-err', text: d.error || 'No pude bajar el mapa' })); return; }
-            info.textContent = `Listo: ${d.map.roads} calles y ${d.map.signals} semáforos.`;
-            loadMap(d.map.id);
-          };
-          res.append(b);
+      const mine = saved.find(isFixed);
+      if (mine && !err) return loadMap(mine.id);
+      const info = h('p', { class: 'br-info', text: 'Preparando el mapa del juego: las calles reales de Morón, 5 km a la redonda. Se baja una sola vez (tarda uno o dos minutos) y después anda sin internet.' });
+      const goBtn = h('button', { class: 'mg-btn primary', type: 'button', text: 'Bajar el mapa' });
+      card.append(info);
+      if (err) card.append(h('p', { class: 'br-err', text: err }));
+      card.append(h('div', { class: 'br-search' }, goBtn));
+      if (host.map.onProgress && !menu.hooked) { menu.hooked = true; host.map.onProgress((t) => { const i = root.querySelector('.br-info'); if (i) i.textContent = t; }); }
+      const go = async () => {
+        goBtn.disabled = true; goBtn.textContent = 'Bajando…';
+        try {
+          if (mine) await host.map.remove(mine.id).catch(() => {});
+          info.textContent = 'Buscando el lugar…';
+          let r = await host.map.search(FIXED.q).catch((e) => ({ ok: false, error: e.message }));
+          if (r.ok && !r.list.length) r = await host.map.search(FIXED.alt).catch((e) => ({ ok: false, error: e.message }));
+          if (!r.ok || !r.list.length) throw new Error(r.error || 'No encontré el lugar del mapa');
+          const x = r.list[0];
+          info.textContent = 'Bajando las calles… puede tardar uno o dos minutos.';
+          const d = await host.map.download({ lat: x.lat, lon: x.lon, r: FIXED.r, name: FIXED.name }).catch((e) => ({ ok: false, error: e.message }));
+          if (!d.ok) throw new Error(d.error || 'No pude bajar el mapa');
+          // los mapas de zonas que se habían elegido antes ya no se usan
+          for (const o of saved) if (!isFixed(o)) host.map.remove(o.id).catch(() => {});
+          info.textContent = `Listo: ${d.map.roads} calles y ${d.map.signals} semáforos.`;
+          loadMap(d.map.id);
+        } catch (e) {
+          goBtn.disabled = false; goBtn.textContent = 'Probar de nuevo';
+          info.textContent = (e && e.message ? e.message : 'No se pudo bajar el mapa') + '. Revisá que la compu tenga internet y probá de nuevo.';
         }
       };
-      go.onclick = search; inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); search(); } };
-      card.append(h('small', { class: 'br-sub', text: saved.length ? 'O bajá otra zona' : 'Tu zona' }), h('div', { class: 'br-search' }, inp, go), h('div', { class: 'br-rad' }, h('small', { text: 'Radio:' }), radSeg), res, info);
-      if (host.map.onProgress && !menu.hooked) { menu.hooked = true; host.map.onProgress((t) => { const i = root.querySelector('.br-info'); if (i) i.textContent = t; }); }
-      setTimeout(() => inp.focus(), 50);
+      goBtn.onclick = go;
+      if (!err) go();
     }
-
 
     // ---------- sonidos (sintetizados, sin archivos) ----------
     let sndOn = H.get().snd !== false;
@@ -2265,7 +2259,6 @@
           h('div', { class: 'brr-row' },
             (restartBtn = btn('↺ Reiniciar carrera', () => { if (race) { toggleOpts(false); startRace(race.tr); } })),
             (backBtn = btn('↩ Volver a la calle', () => { if (me) { resetToRoad(); toggleOpts(false); } })),
-            btn('🗺 Cambiar de zona', () => { toggleOpts(false); menu(); }),
             btn('⟲ Reiniciar el juego', resetGame))),
         sec('🏠 Casa',
           h('div', { class: 'brr-row' },
@@ -2302,7 +2295,6 @@
     syncRaceBtns();
     requestAnimationFrame(async () => {
       fit();
-      if (host.map && mapId) { const list = await host.map.list().catch(() => []); if (list.some(x => x.id === mapId)) return loadMap(mapId); }
       menu();
     });
     return {
