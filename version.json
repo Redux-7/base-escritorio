@@ -1,7 +1,7 @@
 {
-  "version": "2.36.2",
-  "file": "versiones/base-app-2.36.2.zip",
-  "sha256": "16b7c01dbe2a0faddc06d5852d4a16ec3c1ebf26e581b800596c6ebf8cfc82ab",
-  "size": 512591,
-  "notes": "Novedades 2.36.2\n- Copia a Google Drive: si falta activar Drive en tu proyecto de Google, el aviso trae un botón \"Activar\"."
+  "version": "2.37.0",
+  "file": "versiones/base-app-2.37.0.zip",
+  "sha256": "041ee9cf5e8a1e1ea63d5b4fb0dafff7655757d1df20faea7da76d24c64f2661",
+  "size": 517708,
+  "notes": "Novedades 2.37\n- Tablet: los Ajustes de Base se ven igual que en la compu (secciones con íconos, buscador, fondos y relojes con vista previa, modo claro/oscuro).\n- Tablet: suma Automático, Compu y copias, y la papelera."
 }
