@@ -220,6 +220,7 @@
     const hud = h('div', { class: 'mv-hud' }), msg = h('div', { class: 'sn-msg' }), toastEl = h('div', { class: 'br-toast' });
     root.append(hud, msg, toastEl); msg.hidden = true;
     root.addEventListener('pointerdown', () => { try { SND.init(); } catch {} });
+    cv.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(zoomMul * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
     const ctx = cv.getContext('2d');
     let W = 800, Hh = 500, lastSz = '', rf = 0;
     const fit = () => { W = Math.max(320, root.clientWidth); Hh = Math.max(240, root.clientHeight); const d = Math.min(2, devicePixelRatio || 1); cv.width = W * d; cv.height = Hh * d; cv.style.width = W + 'px'; cv.style.height = Hh + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); DPR = d; };
@@ -837,7 +838,8 @@
     }
 
     // ---------- bucle ----------
-    let tickPh = false;
+    let tickPh = false, zoomMul = Math.min(1.6, Math.max(0.45, +H.get().zoom || 1)), padRS = false, zoomSaveT = 0;
+    function setZoom(v) { zoomMul = Math.min(1.6, Math.max(0.45, v)); clearTimeout(zoomSaveT); zoomSaveT = setTimeout(() => { const st = H.get(); st.zoom = +zoomMul.toFixed(2); H.set(st); }, 600); }
     function step(dt) {
       clock += dt;
       { const ph = (clock * 2.6) % 1 < 0.5; if (ph !== tickPh) { tickPh = ph; if (blink.l || blink.r || blink.haz) SND.blip(ph ? 2100 : 1500, 0.025, 'square', 0.05); } }
@@ -849,7 +851,10 @@
       if (mode === 'entregas') jobStep(dt);
       if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.className = 'br-toast'; }
       const spd = Math.abs(me.vf);
-      const z = Math.max(5.5, 12 - spd * 0.3) * (Math.min(W, Hh) / 700);
+      // zoom: automático según la velocidad, multiplicado por el que elegís (analógico derecho, rueda del mouse o + / -)
+      { const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(Boolean) : null;
+        if (gp) { const ry = gp.axes[3] || 0; if (Math.abs(ry) > 0.2) setZoom(zoomMul * Math.exp(-ry * dt * 1.6)); const rs = gp.buttons[11] && gp.buttons[11].pressed; if (rs && !padRS) setZoom(1); padRS = rs; } }
+      const z = Math.min(30, Math.max(1.6, Math.max(5.5, 12 - spd * 0.3) * (Math.min(W, Hh) / 700) * zoomMul));
       zoom += (z - zoom) * Math.min(1, dt * 1.5);
       camX += (me.x + Math.cos(me.a) * me.vf * 0.9 - camX) * Math.min(1, dt * 3);
       camY += (me.y + Math.sin(me.a) * me.vf * 0.9 - camY) * Math.min(1, dt * 3);
@@ -1056,14 +1061,16 @@
     }
     // carteles de esquina al estilo porteño: placa negra, nombre en blanco y flecha con el sentido de la calle
     function drawSigns() {
+      // los carteles se achican con la cámara lejos (y desaparecen si quedan ilegibles)
+      const sc = Math.max(0.5, Math.min(1.1, zoom / 9)); if (zoom < 3.4) return;
       ctx.save(); ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
       const placed = [];
       for (const s2 of G.signs) {
         if (s2.ok === undefined) { placeSign(s2); s2.ok = true; }
         if (s2.hide) continue;
         const [px, py] = toScr(s2.x, s2.y); if (px < -260 || py < -260 || px > W + 260 || py > Hh + 260) continue;
-        ctx.font = '800 11.5px "Arial Narrow", "Roboto Condensed", system-ui, sans-serif';
-        const nm = s2.name.toUpperCase(), t = nm.length > 26 ? nm.slice(0, 25) + '…' : nm, tw = ctx.measureText(t).width, aw = 25, w = tw + 18 + aw, hh = 20;
+        ctx.font = `800 ${(11.5 * sc).toFixed(1)}px "Arial Narrow", "Roboto Condensed", system-ui, sans-serif`;
+        const nm = s2.name.toUpperCase(), t = nm.length > 26 ? nm.slice(0, 25) + '…' : nm, tw = ctx.measureText(t).width, aw = 25 * sc, w = tw + 18 * sc + aw, hh = 20 * sc;
         const cx = px + s2.ux * (w / 2 + 3) + s2.nx * (hh / 2 + 1), cy = py + s2.uy * (w / 2 + 3) + s2.ny * (hh / 2 + 1);
         let ang = Math.atan2(s2.uy, s2.ux); if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
         const ex = Math.abs(Math.cos(ang)) * w / 2 + Math.abs(Math.sin(ang)) * hh / 2, ey = Math.abs(Math.sin(ang)) * w / 2 + Math.abs(Math.cos(ang)) * hh / 2;
@@ -1080,6 +1087,7 @@
         const sx = w / 2 - aw; ctx.beginPath(); ctx.moveTo(sx, -hh / 2 + 1.5); ctx.lineTo(sx, hh / 2 - 1.5); ctx.stroke();
         ctx.fillStyle = '#fff'; ctx.fillText(t, -aw / 2, 0.5);
         // flecha: hacia dónde circula la calle (doble si es de doble mano)
+        ctx.translate(sx + aw / 2, 0); ctx.scale(sc, sc); ctx.translate(-(sx + aw / 2), 0);
         const mx = sx + aw / 2; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6;
         const head = (dir) => { ctx.beginPath(); ctx.moveTo(mx + dir * 8, 0); ctx.lineTo(mx + dir * 3.5, -3.6); ctx.lineTo(mx + dir * 3.5, 3.6); ctx.closePath(); ctx.fill(); };
         if (s2.flow == null) { ctx.beginPath(); ctx.moveTo(mx - 5, 0); ctx.lineTo(mx + 5, 0); ctx.stroke(); head(1); head(-1); }
@@ -1450,6 +1458,9 @@
     const key = (e) => {
       SND.init();
       if ((e.key === 'h' || e.key === 'H') && state === 'run') { SND.horn(true); return true; }
+      if (e.key === '+' || e.key === '=') { setZoom(zoomMul * 1.15); return true; }
+      if (e.key === '-' || e.key === '_') { setZoom(zoomMul / 1.15); return true; }
+      if (e.key === '0') { setZoom(1); return true; }
       if ((e.key === 'p' || e.key === 'P') && state === 'pause') { msg.hidden = true; state = 'run'; return true; }
       if (state !== 'run') return false;
       if (e.key === 'r' || e.key === 'R') {
@@ -1481,7 +1492,7 @@
     return {
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = SKIN[id] || me.c; },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · R volvés a la calle · P pausa. Podés ir por el borde de la vereda, más despacio. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · + / − o la rueda del mouse (o el analógico derecho del joystick) acercan y alejan la cámara · R volvés a la calle · P pausa. Podés ir por el borde de la vereda, más despacio. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };
