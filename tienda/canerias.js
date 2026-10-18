@@ -30,7 +30,7 @@
   const rot = (m) => ((m << 1) | (m >> 3)) & 15;
   const ARM = { 1: 'M50 50V0', 2: 'M50 50H100', 4: 'M50 50V100', 8: 'M50 50H0' };
   function canerias(H) {
-    if (!document.getElementById('st-cn')) document.head.append(h('style', { id: 'st-cn', text: CSS }));
+    { const st0 = document.getElementById('st-cn') || document.head.appendChild(h('style', { id: 'st-cn' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     let n = SIZES[H.get().n] ? +H.get().n : 7;
     const root = h('div', { class: 'cn-wrap' });
     const board = h('div', { class: 'cn-board' }); root.append(board);

@@ -1743,6 +1743,7 @@
     function frame(t) {
       const dt = Math.min(0.05, lastT ? (t - lastT) / 1000 : 0.016); lastT = t;
       if (state === 'run') { step(dt); draw(); hudPaint(); if (race) drawRaceOverlay(); }
+      else if ((state === 'menu-pause' || state === 'pause') && G && me) { draw(); hudPaint(); if (race) drawRaceOverlay(); }
       else if (state === 'edit') drawEditor();
       SND.update(state === 'run');
       raf = requestAnimationFrame(frame);
@@ -1890,7 +1891,7 @@
 .brr-opts{left:auto;right:12px;width:270px}.brr-l{display:grid;gap:4px}.brr-l small{font-weight:700;color:#aab1c2}.brr-l .mg-pick{width:100%}
 .brr-res{border-collapse:collapse;width:100%;font-size:14px}.brr-res td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.08)}.brr-res tr.me td{color:#ffd60a;font-weight:800}
 `;
-    if (!document.getElementById('st-barrio-race')) document.head.append(h('style', { id: 'st-barrio-race', text: RCSS }));
+    { const st0 = document.getElementById('st-barrio-race') || document.head.appendChild(h('style', { id: 'st-barrio-race' })); if (st0.textContent !== RCSS) st0.textContent = RCSS; }
     let race = null, edit = null, editPanel = null;
     const DIFF = { facil: { n: 'Fácil', k: 0.62 }, normal: { n: 'Normal', k: 0.74 }, dificil: { n: 'Difícil', k: 0.86 } };
     const raceOpts = { rivals: Math.min(5, Math.max(1, +H.get().rivals || 3)), diff: DIFF[H.get().rdiff] ? H.get().rdiff : 'normal' };
@@ -2280,7 +2281,7 @@
         sec('🖥 Pantalla y sonido',
           row('Cámara', pick('Cámara', Object.entries(CAMS), camMode, (v) => { camMode = v; const st = H.get(); st.cam = v; H.set(st); })),
           row('Tablero', pick('Tablero', Object.entries(DASH), dash, (v) => { dash = v; const s = H.get(); s.dash = v; H.set(s); })),
-          h('div', { class: 'brr-row' }, sndBtn, btn('⛶ Pantalla completa', () => toggleFull())))),
+          h('div', { class: 'brr-row' }, sndBtn, btn('⛶ Pantalla completa', () => { toggleOpts(false); toggleFull(); })))),
       h('div', { class: 'brr-row', style: 'justify-content:flex-end' }, btn('Seguir jugando', () => toggleOpts(false), 'primary')));
     root.append(optPanel);
     // el menú pone el juego en pausa mientras está abierto
@@ -2295,7 +2296,7 @@
     function toggleFull() { try { if (document.fullscreenElement) document.exitFullscreen(); else root.requestFullscreen({ navigationUI: 'hide' }); } catch {} }
     const tools = [
       btn('☰ Menú', () => toggleOpts()),
-      btn('⛶', () => toggleFull())
+      btn('⛶', () => { toggleOpts(false); toggleFull(); })
     ];
     tools[1].title = 'Pantalla completa (F)';
     syncRaceBtns();

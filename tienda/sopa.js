@@ -44,7 +44,7 @@
   const HUES = [8, 32, 52, 95, 160, 190, 215, 260, 290, 330];
 
   function sopa(H) {
-    if (!document.getElementById('st-sopa')) document.head.append(h('style', { id: 'st-sopa', text: CSS }));
+    { const st0 = document.getElementById('st-sopa') || document.head.appendChild(h('style', { id: 'st-sopa' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     const S0 = H.get();
     let size = SIZES[S0.size] ? +S0.size : 12, tema = (S0.tema && (TEMAS[S0.tema] || S0.tema === 'mix' || S0.tema === 'propias')) ? S0.tema : 'animales', dirs = DIRS[S0.dirs] ? S0.dirs : 'normal';
     const root = h('div', { class: 'sp-wrap' });

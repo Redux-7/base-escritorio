@@ -33,7 +33,7 @@
   }
 
   function deslizante(H) {
-    if (!document.getElementById('st-dz')) document.head.append(h('style', { id: 'st-dz', text: CSS }));
+    { const st0 = document.getElementById('st-dz') || document.head.appendChild(h('style', { id: 'st-dz' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     let n = SIZES[H.get().n] ? +H.get().n : 4;
     const root = h('div', { class: 'dz-wrap' });
     const board = h('div', { class: 'dz-board' }); root.append(board);

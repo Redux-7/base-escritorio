@@ -50,7 +50,7 @@
   const PARTS = 10; // horca (4) + persona (6)
 
   function ahorcado(H) {
-    if (!document.getElementById('st-ahorcado')) document.head.append(h('style', { id: 'st-ahorcado', text: CSS }));
+    { const st0 = document.getElementById('st-ahorcado') || document.head.appendChild(h('style', { id: 'st-ahorcado' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     const S0 = H.get();
     let tema = TEMAS[S0.tema] || S0.tema === 'mix' ? S0.tema : 'mix', lv = LIVES[S0.lv] ? S0.lv : 'normal', modo = S0.modo === 'dos' ? 'dos' : 'uno';
     const root = h('div', { class: 'ah-wrap' });

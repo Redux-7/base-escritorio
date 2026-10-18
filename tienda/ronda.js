@@ -30,7 +30,7 @@
   const canMake = (w, cnt) => { const u = {}; for (const ch of w) { u[ch] = (u[ch] || 0) + 1; if (u[ch] > (cnt[ch] || 0)) return false; } return true; };
 
   function ronda(H) {
-    if (!document.getElementById('st-ronda')) document.head.append(h('style', { id: 'st-ronda', text: CSS }));
+    { const st0 = document.getElementById('st-ronda') || document.head.appendChild(h('style', { id: 'st-ronda' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     let lv = LV[H.get().lv] ? H.get().lv : 'normal';
     const root = h('div', { class: 'rd-wrap' });
     const slots = h('div', { class: 'rd-slots' }), cur = h('div', { class: 'rd-cur empty' }), wheel = h('div', { class: 'rd-wheel' }), bonusEl = h('div', { class: 'rd-bonus' });

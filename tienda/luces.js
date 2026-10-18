@@ -21,7 +21,7 @@
 `;
   const SIZES = { 4: '4×4', 5: '5×5', 6: '6×6', 7: '7×7' };
   function luces(H) {
-    if (!document.getElementById('st-lz')) document.head.append(h('style', { id: 'st-lz', text: CSS }));
+    { const st0 = document.getElementById('st-lz') || document.head.appendChild(h('style', { id: 'st-lz' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     let n = SIZES[H.get().n] ? +H.get().n : 5;
     const root = h('div', { class: 'lz-wrap' });
     const board = h('div', { class: 'lz-board' }), info = h('div', { class: 'lz-info' });

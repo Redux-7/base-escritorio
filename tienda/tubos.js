@@ -53,7 +53,7 @@
     return rec(tubes);
   }
   function tubos(H) {
-    if (!document.getElementById('st-tb')) document.head.append(h('style', { id: 'st-tb', text: CSS }));
+    { const st0 = document.getElementById('st-tb') || document.head.appendChild(h('style', { id: 'st-tb' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     const root = h('div', { class: 'tb-wrap' });
     const rows = h('div', { class: 'tb-rows' }), info = h('div', { class: 'tb-info' });
     root.append(rows, info);

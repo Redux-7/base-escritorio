@@ -96,7 +96,7 @@
   }
 
   function autodefinido(H) {
-    if (!document.getElementById('st-autodef')) document.head.append(h('style', { id: 'st-autodef', text: CSS }));
+    { const st0 = document.getElementById('st-autodef') || document.head.appendChild(h('style', { id: 'st-autodef' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     let size = SIZES[H.get().size] ? H.get().size : 'mediano';
     const root = h('div', { class: 'ad-wrap' }), gridEl = h('div', { class: 'ad-grid' }), side = h('div', { class: 'ad-side' });
     root.append(gridEl, side);

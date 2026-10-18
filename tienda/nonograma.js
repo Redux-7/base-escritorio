@@ -28,7 +28,7 @@
   const SIZES = { 5: '5×5', 10: '10×10', 15: '15×15' };
   const clueOf = (arr) => { const out = []; let k = 0; for (const v of arr) { if (v) k++; else if (k) { out.push(k); k = 0; } } if (k) out.push(k); return out.length ? out : [0]; };
   function nonograma(H) {
-    if (!document.getElementById('st-ng')) document.head.append(h('style', { id: 'st-ng', text: CSS }));
+    { const st0 = document.getElementById('st-ng') || document.head.appendChild(h('style', { id: 'st-ng' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     let n = SIZES[H.get().n] ? +H.get().n : 10;
     const root = h('div', { class: 'ng-wrap' });
     const grid = h('div', { class: 'ng-grid' }); root.append(grid);

@@ -60,7 +60,7 @@
   const words = () => { if (!WORDS) { WORDS = [...DICT.all].map(L); WORDS_C = DICT.common.map(L); } return WORDS; };
 
   function palabrero(H) {
-    if (!document.getElementById('st-palabrero')) document.head.append(h('style', { id: 'st-palabrero', text: CSS }));
+    { const st0 = document.getElementById('st-palabrero') || document.head.appendChild(h('style', { id: 'st-palabrero' })); if (st0.textContent !== CSS) st0.textContent = CSS; }
     let lv = LV[H.get().lv] ? H.get().lv : 'normal';
     const root = h('div', { class: 'pz-wrap' });
     const boardEl = h('div', { class: 'pz-board' }), side = h('div', { class: 'pz-side' });
