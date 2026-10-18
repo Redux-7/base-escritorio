@@ -1,7 +1,7 @@
 {
-  "version": "2.36.1",
-  "file": "versiones/base-app-2.36.1.zip",
-  "sha256": "c44bbc44333750f4ad8423c6d8e143b3272eb33bc461c63a755389b66a9d89e4",
-  "size": 512395,
-  "notes": "Novedades 2.36.1\n- Copia a Google Drive: cada compu usa su propia carpeta, así no se mezclan las copias de la casa y del trabajo."
+  "version": "2.36.2",
+  "file": "versiones/base-app-2.36.2.zip",
+  "sha256": "16b7c01dbe2a0faddc06d5852d4a16ec3c1ebf26e581b800596c6ebf8cfc82ab",
+  "size": 512591,
+  "notes": "Novedades 2.36.2\n- Copia a Google Drive: si falta activar Drive en tu proyecto de Google, el aviso trae un botón \"Activar\"."
 }
