@@ -98,7 +98,7 @@
         for (const j of [i - 1, i + 1]) {
           if (j < 0 || j >= r.p.length) continue;
           const [px, py] = r.p[j], dx = x - px, dy = y - py, L = Math.hypot(dx, dy) || 1;
-          apps.push({ ux: dx / L, uy: dy / L, w: r.w, ri, inbound: !(r.o === 1 && j > i) && !(r.o === -1 && j < i) });
+          apps.push({ ux: dx / L, uy: dy / L, w: r.w, ri, ow: !!r.o, inbound: !(r.o === 1 && j > i) && !(r.o === -1 && j < i) });
         }
       }
       if (apps.length < 3) continue;
@@ -370,27 +370,6 @@
         else if (r.o && r.w >= 9) { path(r.p); g.strokeStyle = 'rgba(240,240,240,.6)'; g.lineWidth = 0.15; g.setLineDash([3, 6]); g.stroke(); }
         g.setLineDash([]);
       }
-      // flechas de sentido de circulación en las calles de mano única
-      g.fillStyle = 'rgba(245,245,240,.82)';
-      for (const r of near) {
-        if (!r.o || r.k >= 7) continue;
-        let cum = 0;
-        for (let i = 0; i < r.p.length - 1; i++) {
-          const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], L = Math.hypot(bx - ax, by - ay); if (L < 1) continue;
-          const ux = (bx - ax) / L, uy = (by - ay) / L, ang = Math.atan2(uy, ux) + (r.o === -1 ? Math.PI : 0);
-          for (let d = Math.ceil((cum - 9) / 26) * 26 + 9 - cum; d < L; d += 26) {
-            if (d < 5 || d > L - 5) continue;
-            const qx = ax + ux * d, qy = ay + uy * d;
-            if (qx < x0 - 8 || qx > x1 + 8 || qy < y0 - 8 || qy > y1 + 8) continue;
-            for (const off of r.w >= 11 ? [-r.w / 4, r.w / 4] : [0]) {
-              g.save(); g.translate(qx - uy * off, qy + ux * off); g.rotate(ang);
-              g.beginPath(); g.moveTo(2.6, 0); g.lineTo(0.6, -1.3); g.lineTo(0.6, -0.45); g.lineTo(-2.6, -0.45); g.lineTo(-2.6, 0.45); g.lineTo(0.6, 0.45); g.lineTo(0.6, 1.3); g.closePath(); g.fill();
-              g.restore();
-            }
-          }
-          cum += L;
-        }
-      }
       // sendas peatonales y líneas de frenado en las esquinas con semáforo
       for (const L of G.lights.values()) {
         if (L.x < x0 - 40 || L.x > x1 + 40 || L.y < y0 - 40 || L.y > y1 + 40) continue;
@@ -398,7 +377,7 @@
           const d = L.maxW / 2 + 2.6, cx = L.x - a.ux * d, cy = L.y - a.uy * d, ang = Math.atan2(a.uy, a.ux);
           g.save(); g.translate(cx, cy); g.rotate(ang); g.fillStyle = 'rgba(238,238,232,.85)';
           for (let s = -a.w / 2 + 0.5; s < a.w / 2 - 0.4; s += 1.1) g.fillRect(-1.4, s, 2.8, 0.55);
-          if (a.inbound) { g.fillRect(-2.4, 0, 0.4, a.w / 2 - 0.3); }
+          if (a.inbound) { if (a.ow) g.fillRect(-2.4, -a.w / 2 + 0.3, 0.4, a.w - 0.6); else g.fillRect(-2.4, 0, 0.4, a.w / 2 - 0.3); }
           g.restore();
         }
       }
@@ -970,15 +949,60 @@
             if (!best) { const d = L.maxW / 2 + 3.6; best = [L.x - a.ux * d + rx * (a.w / 2 + 1.4), L.y - a.uy * d + ry * (a.w / 2 + 1.4)]; }
             a.px = best[0]; a.py = best[1];
           }
-          const x = a.px, y = a.py;
-          ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(a.uy, a.ux));
-          ctx.fillStyle = '#16181c'; ctx.beginPath(); ctx.roundRect(-0.6, -1.7, 1.2, 3.4, 0.3); ctx.fill();
-          const col = { r: '#ff3b30', y: '#ffc400', g: '#30d158' }, ys = { r: -1.05, y: 0, g: 1.05 };
-          for (const k of ['r', 'y', 'g']) { ctx.fillStyle = k === st ? col[k] : 'rgba(255,255,255,.08)'; ctx.beginPath(); ctx.arc(0, ys[k], 0.42, 0, TAU); ctx.fill(); }
-          ctx.fillStyle = st === 'r' ? 'rgba(255,59,48,.22)' : st === 'y' ? 'rgba(255,196,0,.2)' : 'rgba(48,209,88,.18)'; ctx.beginPath(); ctx.arc(0, ys[st], 1.5, 0, TAU); ctx.fill();
+          // línea de frenado pintada del color de la luz, sobre los carriles que controla este semáforo
+          const ang = Math.atan2(a.uy, a.ux), ds = L.maxW / 2 + 4.8, y0 = a.ow ? -a.w / 2 + 0.3 : 0.3, y1 = a.w / 2 - 0.3;
+          const COL = { r: [255, 59, 48], y: [255, 196, 0], g: [48, 209, 88] }[st], rgb = (al) => `rgba(${COL[0]},${COL[1]},${COL[2]},${al})`;
+          const mine = myLight && myLight.a === a;
+          ctx.save(); ctx.translate(L.x - a.ux * ds, L.y - a.uy * ds); ctx.rotate(ang);
+          const gl = ctx.createLinearGradient(-4, 0, 0, 0); gl.addColorStop(0, rgb(0)); gl.addColorStop(1, rgb(mine ? 0.32 : 0.2)); ctx.fillStyle = gl; ctx.fillRect(-4, y0, 4, y1 - y0);
+          ctx.fillStyle = rgb(0.85); ctx.fillRect(-0.3, y0, 0.6, y1 - y0);
+          // brazo desde el poste de la vereda hasta arriba del carril, con la cabeza mirando a los autos que vienen
+          const hy = (y0 + y1) / 2, hx = 0.9;
+          ctx.restore();
+          const hxw = L.x - a.ux * ds + a.ux * hx - a.uy * hy, hyw = L.y - a.uy * ds + a.uy * hx + a.ux * hy;
+          ctx.strokeStyle = '#3a3d42'; ctx.lineWidth = 0.22; ctx.beginPath(); ctx.moveTo(a.px, a.py); ctx.lineTo(hxw, hyw); ctx.stroke();
+          ctx.fillStyle = '#2a2c30'; ctx.beginPath(); ctx.arc(a.px, a.py, 0.42, 0, TAU); ctx.fill(); ctx.strokeStyle = '#8a8f96'; ctx.lineWidth = 0.08; ctx.stroke();
+          ctx.save(); ctx.translate(hxw, hyw); ctx.rotate(ang); ctx.scale(1.35, 1.35);
+          ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.roundRect(-0.35, -1.25, 1.1, 2.7, 0.25); ctx.fill();
+          ctx.fillStyle = '#121316'; ctx.beginPath(); ctx.roundRect(-0.5, -1.4, 1, 2.8, 0.25); ctx.fill();
+          ctx.fillStyle = '#e8c21a'; ctx.fillRect(0.38, -1.4, 0.12, 2.8);
+          const ys = { r: -0.9, y: 0, g: 0.9 }, cols = { r: '#ff3b30', y: '#ffc400', g: '#30d158' };
+          for (const k of ['r', 'y', 'g']) {
+            ctx.fillStyle = k === st ? cols[k] : 'rgba(255,255,255,.07)'; ctx.beginPath(); ctx.arc(-0.05, ys[k], 0.36, 0, TAU); ctx.fill();
+            ctx.fillStyle = '#121316'; ctx.beginPath(); ctx.moveTo(-0.5, ys[k] - 0.42); ctx.lineTo(-0.85, ys[k]); ctx.lineTo(-0.5, ys[k] + 0.42); ctx.closePath(); ctx.fill(); // visera hacia los autos
+          }
+          ctx.fillStyle = rgb(0.25); ctx.beginPath(); ctx.arc(-0.05, ys[st], 1.3, 0, TAU); ctx.fill();
+          if (mine) { ctx.strokeStyle = `rgba(255,255,255,${0.5 + 0.4 * Math.sin(clock * 6)})`; ctx.lineWidth = 0.15; ctx.beginPath(); ctx.roundRect(-0.9, -1.8, 1.8, 3.6, 0.5); ctx.stroke(); }
           ctx.restore();
         }
       }
+    }
+    // el semáforo que te toca: el de la esquina que tenés adelante, en tu sentido
+    let myLight = null;
+    function findMyLight() {
+      myLight = null; let bd = 1e9; const hx = Math.cos(me.a), hy = Math.sin(me.a);
+      for (const L of G.lights.values()) {
+        const dx = L.x - me.x, dy = L.y - me.y; if (Math.abs(dx) > 90 || Math.abs(dy) > 90) continue;
+        for (const a of L.apps) {
+          if (!a.inbound || a.ux * hx + a.uy * hy < 0.7) continue;
+          const along = dx * a.ux + dy * a.uy, lat = Math.abs(-dx * a.uy + dy * a.ux), stop = along - (L.maxW / 2 + 4.8);
+          if (along < L.maxW / 2 || along > 85 || lat > a.w / 2 + 2.5) continue;
+          if (along < bd) { bd = along; myLight = { L, a, dist: stop }; }
+        }
+      }
+    }
+    function drawMyLight() {
+      if (!myLight || me.vf < -0.5) return;
+      const st = lightState(myLight.L, myLight.a.g), x = 20, y = 62, w = 46, hh = 128;
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.roundRect(x + 2, y + 3, w, hh, 12); ctx.fill();
+      ctx.fillStyle = '#121316'; ctx.beginPath(); ctx.roundRect(x, y, w, hh, 12); ctx.fill(); ctx.strokeStyle = '#e8c21a'; ctx.lineWidth = 2; ctx.stroke();
+      const cols = { r: '#ff3b30', y: '#ffc400', g: '#30d158' };
+      ['r', 'y', 'g'].forEach((k, i) => { const cy = y + 22 + i * 32; if (k === st) { const gr = ctx.createRadialGradient(x + w / 2, cy, 2, x + w / 2, cy, 22); gr.addColorStop(0, cols[k]); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x + w / 2, cy, 22, 0, TAU); ctx.fill(); } ctx.fillStyle = k === st ? cols[k] : 'rgba(255,255,255,.08)'; ctx.beginPath(); ctx.arc(x + w / 2, cy, 12, 0, TAU); ctx.fill(); });
+      const d = Math.max(0, Math.round(myLight.dist));
+      ctx.fillStyle = 'rgba(16,20,28,.85)'; ctx.beginPath(); ctx.roundRect(x - 4, y + hh + 6, w + 8, 22, 9); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '800 12px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(myLight.dist < 1 ? 'Cruce' : `${d} m`, x + w / 2, y + hh + 17.5);
+      ctx.restore();
     }
     const toScr = (x, y) => [W / 2 + (x - camX) * zoom, Hh / 2 + (y - camY) * zoom];
     // elige la esquina del cruce donde el cartel no pisa la calle (y distinta de la del otro cartel)
@@ -1098,6 +1122,7 @@
       }
       if (job) { const p = 1 + Math.sin(clock * 5) * 0.15; ctx.strokeStyle = '#ffd60a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(job.x, job.y, 12 * p, 0, TAU); ctx.stroke(); ctx.fillStyle = 'rgba(255,214,10,.18)'; ctx.fill(); }
       for (const c of cars) if (c.x > vx0 - 12 && c.x < vx1 + 12 && c.y > vy0 - 12 && c.y < vy1 + 12) drawCar(c);
+      findMyLight();
       drawCar(me, true);
       // humo del motor cuando el auto está muy golpeado
       if ((me.dmg || 0) > 0.55 && state === 'run') {
@@ -1114,6 +1139,7 @@
       // viñeta suave en los bordes
       { const vg = ctx.createRadialGradient(W / 2, Hh / 2, Math.min(W, Hh) * 0.45, W / 2, Hh / 2, Math.max(W, Hh) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.28)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, Hh); }
       drawSigns();
+      drawMyLight();
       // cartel grande de contramano
       if (wrongT > 0.7) {
         const bw = Math.min(W - 40, 430), bx = W / 2 - bw / 2, by = 64, al = 0.75 + 0.25 * Math.sin(performance.now() / 120);
@@ -1155,6 +1181,9 @@
           ctx.beginPath(); r.p.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
           ctx.strokeStyle = big ? TH.ave : TH.road; ctx.lineWidth = (big ? 4.5 : 2.6) / k; ctx.stroke();
         }
+        // sentido de las calles de mano única en el radar
+        ctx.fillStyle = wx === 'dia' || wx === 'lluvia' ? 'rgba(50,56,66,.85)' : 'rgba(255,255,255,.8)';
+        for (const r of near.roads) { if (!r.o || r.k >= 7) continue; for (let i = 0; i < r.p.length - 1; i++) { const [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], Ls = Math.hypot(bx - ax, by - ay); if (Ls < 30) continue; const an = Math.atan2(by - ay, bx - ax) + (r.o === -1 ? Math.PI : 0); for (let t = 0.5 / Math.max(1, Math.round(Ls / 90)); t < 1; t += 1 / Math.max(1, Math.round(Ls / 90))) { ctx.save(); ctx.translate(ax + (bx - ax) * t, ay + (by - ay) * t); ctx.rotate(an); ctx.scale(1 / k, 1 / k); ctx.beginPath(); ctx.moveTo(4.5, 0); ctx.lineTo(-3, -3.6); ctx.lineTo(-1, 0); ctx.lineTo(-3, 3.6); ctx.closePath(); ctx.fill(); ctx.restore(); } } }
         for (const st of G.stations) { ctx.fillStyle = '#1f9d55'; ctx.beginPath(); ctx.arc(st.rx, st.ry, 7 / k, 0, TAU); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = `${8 / k}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.save(); ctx.translate(st.rx, st.ry); ctx.rotate(me.a + Math.PI / 2); ctx.fillText('⛽', 0, 0.5 / k); ctx.restore(); }
         if (job) { ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.arc(job.x, job.y, 6 / k, 0, TAU); ctx.fill(); }
         ctx.restore();
@@ -1229,7 +1258,7 @@
       const nr = nearestRoad(me.x, me.y), street = nr && nr.d < 4 && nr.r.n ? nr.r.n : '';
       const kmh = Math.round(Math.abs(me.vf) * 3.6);
       let h2 = '';
-      if (street) h2 += `<span>📍 ${street.replace(/</g, '')}</span>`;
+      if (street) { const fl = nr.r.o ? (nr.r.o === 1 ? nr.ang : nr.ang + Math.PI) : null; h2 += `<span>📍 ${street.replace(/</g, '')}${fl == null ? ' <small style="opacity:.7">· doble mano</small>' : ` <b style="display:inline-block;transform:rotate(${fl.toFixed(2)}rad);color:#ffd60a">➜</b> <small style="opacity:.7">mano única</small>`}</span>`; }
       if (mode === 'entregas' && job) h2 += `<span>📦 ${job.street.replace(/</g, '')} · ${(Math.hypot(job.x - me.x, job.y - me.y) / 1000).toFixed(2)} km · ${Math.max(0, Math.ceil(job.time))} s</span>`;
       h2 += `<span>🚦 ${stats.red}</span><span>💥 ${stats.crash}</span>`;
       if (me.dmg > 0.005) h2 += `<span style="color:${me.dmg > 0.6 ? '#ff8a80' : me.dmg > 0.3 ? '#ffd27a' : '#fff'}">🔧 Daños ${Math.round(me.dmg * 100)}%${repairing ? ' · reparando…' : ''}</span>`;
@@ -1252,7 +1281,7 @@
       G = prepare(m); tiles.clear(); mapId = id; const s = H.get(); s.map = id; H.set(s);
       buildMini(); startCar(); autoLights(); cars = []; skids = []; stats = { red: 0, crash: 0, done: 0, pts: 0 }; job = null;
       for (let i = 0; i < 30; i++) spawnCar(false);
-      window.__barrioG = G; window.__barrio = { raw: () => cars, cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y) };
+      window.__barrioG = G; window.__barrio = { raw: () => cars, cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), G: () => G, road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y) };
       msg.hidden = true; closeOver(root); state = 'run'; fit();
       H.status([m.name.split(',').slice(0, 2).join(','), `${G.lights.size} semáforos`]);
       if (mode === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras');
@@ -1342,7 +1371,7 @@
     return {
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = SKIN[id] || me.c; },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · R volvés a la calle · P pausa. Podés ir por el borde de la vereda, más despacio. Las flechas blancas marcan las calles de mano única. Con lluvia frena y dobla peor.',
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · R volvés a la calle · P pausa. Podés ir por el borde de la vereda, más despacio. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };
