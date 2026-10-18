@@ -1,7 +1,7 @@
 {
-  "version": "2.36.0",
-  "file": "versiones/base-app-2.36.0.zip",
-  "sha256": "ca93138c9db1ee572f3e48c3eb75014590f9201f4f7fca36cea0ea2653ac65dc",
-  "size": 512357,
-  "notes": "Novedades 2.36\n- Copia directa a tu Google Drive, todos los días: tus datos de Base y las carpetas que elijas.\n- Se activa en Ajustes > Compu y copias > \"Subir a mi Google Drive\" (pide volver a vincular la cuenta una vez)."
+  "version": "2.36.1",
+  "file": "versiones/base-app-2.36.1.zip",
+  "sha256": "c44bbc44333750f4ad8423c6d8e143b3272eb33bc461c63a755389b66a9d89e4",
+  "size": 512395,
+  "notes": "Novedades 2.36.1\n- Copia a Google Drive: cada compu usa su propia carpeta, así no se mezclan las copias de la casa y del trabajo."
 }
