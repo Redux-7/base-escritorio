@@ -3,6 +3,7 @@
   'use strict';
   const BM = window.BaseMini; if (!BM || !BM.register) return;
   const { h, seg, pick, btn, overlay, confetti, timer, fmtTime } = BM.util;
+  const SFX = (BM.util && BM.util.sfx) || (() => {});
   const closeOver = (root) => { const o = root.querySelector('.mg-over'); if (o) o.remove(); };
   // Listas por tema (compartidas por Sopa de letras y Ahorcado)
   const TEMAS = {
@@ -129,7 +130,7 @@
       return [r1, c1];
     }
     function tryWord() {
-      const { r0, c0, r1, c1 } = sel; sel = null;
+      const { r0, c0, r1, c1 } = sel; sel = null; const okBefore = words.filter(w => w.ok).length;
       const L = Math.max(Math.abs(r1 - r0), Math.abs(c1 - c0)) + 1, dr = Math.sign(r1 - r0), dc = Math.sign(c1 - c0);
       for (const w of words) {
         if (w.ok || w.w.length !== L) continue;
@@ -140,6 +141,7 @@
         if (s === w.w || [...s].reverse().join('') === w.w) { w.ok = true; w.r0 = r0; w.c0 = c0; w.dr = dr; w.dc = dc; if ([...s].reverse().join('') === w.w && s !== w.w) { w.r0 = r1; w.c0 = c1; w.dr = -dr; w.dc = -dc; } w.el.classList.add('ok'); break; }
       }
       drawMarks(); status();
+      if (!words.every(w => w.ok)) SFX(words.filter(w => w.ok).length > okBefore ? 'good' : 'erase');
       if (words.every(w => w.ok) && !done) win();
     }
     let dragging = false, moved = false;
@@ -149,7 +151,7 @@
         const [r1, c1] = snap(sel.r0, sel.c0, r, c); sel.r1 = r1; sel.c1 = c1; tryWord(); return;
       }
       if (!t.running) t.start();
-      sel = { r0: r, c0: c }; dragging = true; moved = false; board.setPointerCapture(e.pointerId); drawMarks();
+      SFX('tap'); sel = { r0: r, c0: c }; dragging = true; moved = false; board.setPointerCapture(e.pointerId); drawMarks();
     });
     board.addEventListener('pointermove', (e) => { if (!dragging || !sel) return; const [r, c] = cellAt(e); const [r1, c1] = snap(sel.r0, sel.c0, r, c); if (r1 !== sel.r0 || c1 !== sel.c0) moved = true; sel.r1 = r1; sel.c1 = c1; drawMarks(); });
     board.addEventListener('pointerup', () => { if (!dragging) return; dragging = false; if (moved && sel) tryWord(); else if (sel) { sel.r1 = null; drawMarks(); } });

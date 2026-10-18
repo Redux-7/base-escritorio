@@ -3,6 +3,7 @@
   'use strict';
   const BM = window.BaseMini; if (!BM || !BM.register) return;
   const { h, pick, seg, btn, overlay, confetti } = BM.util;
+  const SFX = (BM.util && BM.util.sfx) || (() => {});
   const closeOver = (root) => { const o = root.querySelector('.mg-over'); if (o) o.remove(); };
   // Listas por tema (compartidas por Sopa de letras y Ahorcado)
   const TEMAS = {
@@ -114,6 +115,7 @@
       shown = [...shown].map((c, i) => { if (c === '_' && norm(word[i]) === ch) { hit = true; pop.add(i); return word[i]; } return c; }).join('');
       keyEls[ch].classList.add(hit ? 'ok' : 'no'); keyEls[ch].disabled = true;
       if (!hit) misses++;
+      SFX(hit ? (pop.size > 1 ? 'good' : 'pop') : 'bad');
       const won = !shown.includes('_'), lost = misses >= max;
       if (won || lost) {
         over = true;
@@ -130,7 +132,7 @@
       if (!left.length) return;
       if (misses + 1 >= max) { H.toast && H.toast('No te alcanzan las vidas para una pista'); return; }
       const ch = left[Math.floor(Math.random() * left.length)];
-      misses++; tried.add(ch); // la pista cuesta una vida
+      misses++; tried.add(ch); SFX('coin'); // la pista cuesta una vida
       const pop = new Set(); shown = [...shown].map((c, i) => { if (c === '_' && norm(word[i]) === ch) { pop.add(i); return word[i]; } return c; }).join('');
       keyEls[ch].classList.add('ok'); keyEls[ch].disabled = true;
       if (!shown.includes('_')) { over = true; const s = st(); s.games++; s.wins++; s.racha++; H.set(s); confetti(root); overlay(root, '¡Adivinaste!', word, [btn('Otra', newGame, 'primary')]); }

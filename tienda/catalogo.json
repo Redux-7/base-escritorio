@@ -7,10 +7,10 @@
       "c": "#d35400",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#4f9a3f\"/><path d=\"M14 50c-8-10-6-30 8-36s30-2 32 12-10 14-16 18-16 16-24 6z\" fill=\"none\" stroke=\"#5a5d63\" stroke-width=\"9\" stroke-linejoin=\"round\"/><path d=\"M14 50c-8-10-6-30 8-36s30-2 32 12-10 14-16 18-16 16-24 6z\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1\" stroke-dasharray=\"3 3\"/><g transform=\"rotate(-30 22 18)\"><rect x=\"15\" y=\"14\" width=\"14\" height=\"8\" rx=\"2\" fill=\"#e8202a\"/><rect x=\"22\" y=\"15\" width=\"3\" height=\"6\" fill=\"#1d2633\"/></g><g transform=\"rotate(60 50 34)\"><rect x=\"43\" y=\"30\" width=\"14\" height=\"8\" rx=\"2\" fill=\"#2f6fed\"/></g></svg>",
       "tipo": "Carreras",
-      "v": "3",
+      "v": "4",
       "file": "rally.js",
-      "size": 18658,
-      "sha256": "3b773ebb1756dfaac2daeefc274d3b1f6d3988c1b32e2200c51c89946a2ad0e6"
+      "size": 19181,
+      "sha256": "29fe5612affe4c874891cb57088298b956de0592751ddc9b9d027361ab28d66f"
     },
     {
       "id": "dogfight",
@@ -19,10 +19,10 @@
       "c": "#2a6aa8",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#3d86c6\"/><circle cx=\"46\" cy=\"44\" r=\"12\" fill=\"rgba(255,255,255,.35)\"/><g transform=\"rotate(-35 22 30)\"><path d=\"M34 30l-6-2-3-8h-3l1 8-6 1-2-3h-2l1 4-1 4h2l2-3 6 1-1 8h3l3-8z\" fill=\"#e8202a\"/></g><g transform=\"rotate(150 46 22)\"><path d=\"M58 22l-6-2-3-8h-3l1 8-6 1-2-3h-2l1 4-1 4h2l2-3 6 1-1 8h3l3-8z\" fill=\"#2f6fed\"/></g><path d=\"M30 24l8-5\" stroke=\"#fffbcc\" stroke-width=\"2.5\" stroke-linecap=\"round\"/><circle cx=\"41\" cy=\"18\" r=\"3\" fill=\"#ffb347\"/></svg>",
       "tipo": "Acción",
-      "v": "4",
+      "v": "5",
       "file": "dogfight.js",
-      "size": 33120,
-      "sha256": "9fb7e1a847da8590c096a4bd1f91369134278370e0a34a584d992fe78d796c7b"
+      "size": 33508,
+      "sha256": "54aa084e719dcecdb5dd6d7c149d461b2b50bc98799602fedeb97b4b9a3aab16"
     },
     {
       "id": "pingpong",
@@ -31,10 +31,10 @@
       "c": "#1f6f5c",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1f6f5c\"/><rect x=\"6\" y=\"6\" width=\"52\" height=\"52\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M32 6v52\" stroke=\"#fff\" stroke-width=\"2\" stroke-dasharray=\"4 4\"/><rect x=\"10\" y=\"20\" width=\"5\" height=\"16\" fill=\"#e8202a\"/><rect x=\"49\" y=\"28\" width=\"5\" height=\"16\" fill=\"#2f6fed\"/><circle cx=\"36\" cy=\"26\" r=\"3.5\" fill=\"#fff\"/></svg>",
       "tipo": "Clásicos",
-      "v": "2",
+      "v": "3",
       "file": "pingpong.js",
-      "size": 6630,
-      "sha256": "aa9d3c4578210e13d66b3a618df033111962c5534b43a2f9293ea08cfeea9ad1"
+      "size": 6764,
+      "sha256": "65faab5eea97ee1ce53f2f76a50298d79f39e9ef21e7c4be92c64ff70927eaeb"
     },
     {
       "id": "barrio",
@@ -43,10 +43,10 @@
       "c": "#3a6b8f",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#b9b3a6\"/><path d=\"M0 22h64M0 46h64M20 0v64M46 0v64\" stroke=\"#4b4e54\" stroke-width=\"9\"/><path d=\"M0 22h64M20 0v64\" stroke=\"#e0b43a\" stroke-width=\"0.8\" stroke-dasharray=\"3 3\"/><rect x=\"26\" y=\"26\" width=\"14\" height=\"14\" fill=\"#b0603c\"/><rect x=\"4\" y=\"4\" width=\"10\" height=\"12\" fill=\"#8e8e8a\"/><rect x=\"52\" y=\"52\" width=\"9\" height=\"9\" fill=\"#6f8f4e\"/><rect x=\"28\" y=\"19\" width=\"9\" height=\"5\" rx=\"1.2\" fill=\"#d3202a\"/><rect x=\"43\" y=\"30\" width=\"5\" height=\"9\" rx=\"1.2\" fill=\"#f2f2f2\"/><circle cx=\"16\" cy=\"18\" r=\"2\" fill=\"#30d158\"/></svg>",
       "tipo": "Manejo",
-      "v": "23",
+      "v": "24",
       "file": "barrio.js",
-      "size": 205225,
-      "sha256": "2ba787d59ebd2118e4f1d62959971d44849c4df8ca14b2784b88076fc6e4513b"
+      "size": 206544,
+      "sha256": "e93cddac9656c050afe86e5561c057b82b03544473d5fa328260d0fd93b63905"
     },
     {
       "id": "futbol",
@@ -55,10 +55,10 @@
       "c": "#2a7f3d",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2a7f3d\"/><rect x=\"0\" y=\"0\" width=\"16\" height=\"64\" fill=\"#2f8a43\"/><rect x=\"32\" y=\"0\" width=\"16\" height=\"64\" fill=\"#2f8a43\"/><rect x=\"5\" y=\"9\" width=\"54\" height=\"46\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><path d=\"M32 9v46\" stroke=\"#fff\" stroke-width=\"1.6\"/><circle cx=\"32\" cy=\"32\" r=\"7\" fill=\"none\" stroke=\"#fff\" stroke-width=\"1.6\"/><circle cx=\"22\" cy=\"26\" r=\"3.4\" fill=\"#6cb4ee\" stroke=\"#fff\"/><circle cx=\"42\" cy=\"38\" r=\"3.4\" fill=\"#d62828\" stroke=\"#fff\"/><circle cx=\"31\" cy=\"31\" r=\"2\" fill=\"#fff\" stroke=\"#222\" stroke-width=\".8\"/></svg>",
       "tipo": "Deportes",
-      "v": "1",
+      "v": "2",
       "file": "futbol.js",
-      "size": 21752,
-      "sha256": "b485347b252ca7af5ff3a143d88f372a9b541c528ae3b07a2a52503c87957361"
+      "size": 22021,
+      "sha256": "a44f059ca847274b74e658f382b21b8fe87357afe6511b96fa08e7ef9c44a620"
     },
     {
       "id": "autodefinido",
@@ -67,10 +67,10 @@
       "c": "#2f6fd6",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2b2f38\"/><g><rect x=\"5\" y=\"5\" width=\"17\" height=\"17\" fill=\"#cfe0f2\"/><rect x=\"23\" y=\"5\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"41\" y=\"5\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"5\" y=\"23\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"23\" y=\"23\" width=\"17\" height=\"17\" fill=\"#cfe0f2\"/><rect x=\"41\" y=\"23\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"5\" y=\"41\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"23\" y=\"41\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"41\" y=\"41\" width=\"17\" height=\"17\" fill=\"#3b404b\"/></g><g fill=\"#1d3350\" font-family=\"system-ui\" font-size=\"4.3\" font-weight=\"700\"><text x=\"7\" y=\"12\">Astro</text><text x=\"7\" y=\"17\">rey ▸</text><text x=\"25\" y=\"30\">Mar</text><text x=\"25\" y=\"35\">...▾</text></g><g font-family=\"system-ui\" font-weight=\"800\" font-size=\"12\" fill=\"#1b2433\" text-anchor=\"middle\"><text x=\"31.5\" y=\"18\">S</text><text x=\"49.5\" y=\"18\">O</text><text x=\"49.5\" y=\"36\">L</text></g></svg>",
       "tipo": "Letras",
-      "v": "1",
+      "v": "2",
       "file": "autodefinido.js",
-      "size": 29466,
-      "sha256": "e620fc93a0e18ceec74f370fe14a049d990bcac9f90dc2a25f79efe94cec7f24"
+      "size": 29548,
+      "sha256": "94273518e8dc6490d071acb82313c47de02b62c1558b012dec20bcdaf4768a9d"
     },
     {
       "id": "sopa",
@@ -79,10 +79,10 @@
       "c": "#c0743a",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#f6f1e4\"/><g font-family=\"system-ui,sans-serif\" font-weight=\"800\" font-size=\"11\" fill=\"#3a3540\" text-anchor=\"middle\"><text x=\"12\" y=\"17\">S</text><text x=\"25\" y=\"17\">O</text><text x=\"38\" y=\"17\">P</text><text x=\"51\" y=\"17\">A</text><text x=\"12\" y=\"31\">K</text><text x=\"25\" y=\"31\">L</text><text x=\"38\" y=\"31\">E</text><text x=\"51\" y=\"31\">T</text><text x=\"12\" y=\"45\">R</text><text x=\"25\" y=\"45\">A</text><text x=\"38\" y=\"45\">S</text><text x=\"51\" y=\"45\">M</text><text x=\"12\" y=\"59\">U</text><text x=\"25\" y=\"59\">Z</text><text x=\"38\" y=\"59\">O</text><text x=\"51\" y=\"59\">E</text></g><rect x=\"4\" y=\"7\" width=\"54\" height=\"13\" rx=\"6.5\" fill=\"#e8743a\" opacity=\".45\"/><line x1=\"12\" y1=\"27\" x2=\"38\" y2=\"55\" stroke=\"#4c8dff\" stroke-width=\"10\" stroke-linecap=\"round\" opacity=\".35\"/></svg>",
       "tipo": "Letras",
-      "v": "1",
+      "v": "2",
       "file": "sopa.js",
-      "size": 20466,
-      "sha256": "9ea0720c1bdbf8e440c71b98332e3bd72b4c29c70c547880e5311937cc0009d3"
+      "size": 20683,
+      "sha256": "1204a61734c4aba712eb7cf212036c5953b48e2c725dff0300049f24ca3aa8d1"
     },
     {
       "id": "palabrero",
@@ -91,10 +91,10 @@
       "c": "#1d4d3c",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1d4d3c\"/><g fill=\"#d9cfb4\"><rect x=\"6\" y=\"6\" width=\"11\" height=\"11\" rx=\"2\"/><rect x=\"47\" y=\"47\" width=\"11\" height=\"11\" rx=\"2\"/><rect x=\"47\" y=\"6\" width=\"11\" height=\"11\" rx=\"2\" fill=\"#d2473d\"/><rect x=\"6\" y=\"47\" width=\"11\" height=\"11\" rx=\"2\" fill=\"#2f7fc1\"/></g><g font-family=\"system-ui,sans-serif\" font-weight=\"800\" text-anchor=\"middle\"><g fill=\"#f3dfa8\"><rect x=\"9\" y=\"25\" width=\"14\" height=\"14\" rx=\"2.5\"/><rect x=\"25\" y=\"25\" width=\"14\" height=\"14\" rx=\"2.5\"/><rect x=\"41\" y=\"25\" width=\"14\" height=\"14\" rx=\"2.5\"/><rect x=\"25\" y=\"9\" width=\"14\" height=\"14\" rx=\"2.5\"/><rect x=\"25\" y=\"41\" width=\"14\" height=\"14\" rx=\"2.5\"/></g><g fill=\"#3a2a14\" font-size=\"10\"><text x=\"16\" y=\"36\">S</text><text x=\"32\" y=\"36\">O</text><text x=\"48\" y=\"36\">L</text><text x=\"32\" y=\"20\">D</text><text x=\"32\" y=\"52\">S</text></g></g></svg>",
       "tipo": "Letras",
-      "v": "1",
+      "v": "2",
       "file": "palabrero.js",
-      "size": 353567,
-      "sha256": "acf8f5605d07bbf17a4753c15c14307613914179a57ab23eca591b9d3f151ba0"
+      "size": 353716,
+      "sha256": "cff3f47f48217bf31d5ddade0db5d7fcb967e9ed3409087fcc9caf988aa685e1"
     },
     {
       "id": "ronda",
@@ -103,10 +103,10 @@
       "c": "#8a5cc7",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#3b2a5c\"/><circle cx=\"32\" cy=\"36\" r=\"22\" fill=\"rgba(255,255,255,.08)\"/><polyline points=\"32,20 46,40 20,42\" fill=\"none\" stroke=\"#ffd60a\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\".8\"/><g font-family=\"system-ui,sans-serif\" font-weight=\"800\" font-size=\"10\" text-anchor=\"middle\" fill=\"#3a2a14\"><circle cx=\"32\" cy=\"20\" r=\"7\" fill=\"#f6e3a6\"/><text x=\"32\" y=\"23.5\">S</text><circle cx=\"46\" cy=\"40\" r=\"7\" fill=\"#f6e3a6\"/><text x=\"46\" y=\"43.5\">O</text><circle cx=\"20\" cy=\"42\" r=\"7\" fill=\"#f6e3a6\"/><text x=\"20\" y=\"45.5\">L</text></g><g fill=\"#3f9a5a\"><rect x=\"14\" y=\"4\" width=\"8\" height=\"8\" rx=\"2\"/><rect x=\"24\" y=\"4\" width=\"8\" height=\"8\" rx=\"2\"/><rect x=\"34\" y=\"4\" width=\"8\" height=\"8\" rx=\"2\"/></g></svg>",
       "tipo": "Letras",
-      "v": "1",
+      "v": "2",
       "file": "ronda.js",
-      "size": 339742,
-      "sha256": "1537f569f6209fddcb791b52ef3d6e360969f42bf021d5ba6ee176eacd160e68"
+      "size": 339913,
+      "sha256": "9da83572432b46201f8297673ad0a549afb2c294be7ba7e9bdbbe6bc6b874979"
     },
     {
       "id": "ahorcado",
@@ -115,10 +115,70 @@
       "c": "#7a5a3a",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2f3542\"/><g stroke=\"#c9a77a\" stroke-width=\"3.5\" stroke-linecap=\"round\"><line x1=\"10\" y1=\"52\" x2=\"32\" y2=\"52\"/><line x1=\"16\" y1=\"52\" x2=\"16\" y2=\"10\"/><line x1=\"16\" y1=\"10\" x2=\"40\" y2=\"10\"/></g><g stroke=\"#eee\" stroke-width=\"2.6\" stroke-linecap=\"round\" fill=\"none\"><line x1=\"40\" y1=\"10\" x2=\"40\" y2=\"16\"/><circle cx=\"40\" cy=\"21\" r=\"5\"/><line x1=\"40\" y1=\"26\" x2=\"40\" y2=\"38\"/><line x1=\"40\" y1=\"30\" x2=\"34\" y2=\"35\"/><line x1=\"40\" y1=\"30\" x2=\"46\" y2=\"35\"/></g><g fill=\"#fff\" font-family=\"system-ui\" font-weight=\"800\" font-size=\"8\"><text x=\"30\" y=\"61\">A _ _ A</text></g></svg>",
       "tipo": "Letras",
-      "v": "1",
+      "v": "2",
       "file": "ahorcado.js",
-      "size": 18380,
-      "sha256": "f93f104e29744d953623c31ec7643f31a5ccefea6222734806a370efc1af69ff"
+      "size": 18505,
+      "sha256": "833f2c607a63db35d5cd08f0e3605efc0bcd1acac31b90f99fe96f225fe69aa9"
+    },
+    {
+      "id": "deslizante",
+      "n": "Deslizá",
+      "d": "El clásico rompecabezas de fichas que se deslizan: de 3×3 a 6×6, con números o con un dibujo.",
+      "c": "#b5793e",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#5b3a22\"/><g fill=\"#d9a865\"><rect x=\"6\" y=\"6\" width=\"16\" height=\"16\" rx=\"3\"/><rect x=\"24\" y=\"6\" width=\"16\" height=\"16\" rx=\"3\"/><rect x=\"42\" y=\"6\" width=\"16\" height=\"16\" rx=\"3\"/><rect x=\"6\" y=\"24\" width=\"16\" height=\"16\" rx=\"3\"/><rect x=\"24\" y=\"24\" width=\"16\" height=\"16\" rx=\"3\"/><rect x=\"42\" y=\"24\" width=\"16\" height=\"16\" rx=\"3\"/><rect x=\"6\" y=\"42\" width=\"16\" height=\"16\" rx=\"3\"/><rect x=\"24\" y=\"42\" width=\"16\" height=\"16\" rx=\"3\"/></g><g font-family=\"system-ui\" font-weight=\"800\" font-size=\"10\" fill=\"#4a2c14\" text-anchor=\"middle\"><text x=\"14\" y=\"18\">1</text><text x=\"32\" y=\"18\">2</text><text x=\"50\" y=\"18\">3</text><text x=\"14\" y=\"36\">4</text><text x=\"32\" y=\"36\">5</text><text x=\"50\" y=\"36\">6</text><text x=\"14\" y=\"54\">7</text><text x=\"32\" y=\"54\">8</text></g></svg>",
+      "tipo": "Puzzles",
+      "v": "1",
+      "file": "deslizante.js",
+      "size": 10723,
+      "sha256": "a7064bf738afb2a05e8e6901326d7511e3abd361b933186c6fd76dc48aa93818"
+    },
+    {
+      "id": "luces",
+      "n": "Luces",
+      "d": "Apagá todas las luces: cada toque cambia también las de al lado. Niveles sin fin.",
+      "c": "#e0a800",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1b1d24\"/><g fill=\"#2d313c\"><rect x=\"7\" y=\"7\" width=\"14\" height=\"14\" rx=\"3\"/><rect x=\"43\" y=\"7\" width=\"14\" height=\"14\" rx=\"3\"/><rect x=\"7\" y=\"43\" width=\"14\" height=\"14\" rx=\"3\"/><rect x=\"25\" y=\"43\" width=\"14\" height=\"14\" rx=\"3\"/></g><g fill=\"#ffd23f\"><rect x=\"25\" y=\"7\" width=\"14\" height=\"14\" rx=\"3\"/><rect x=\"7\" y=\"25\" width=\"14\" height=\"14\" rx=\"3\"/><rect x=\"25\" y=\"25\" width=\"14\" height=\"14\" rx=\"3\"/><rect x=\"43\" y=\"25\" width=\"14\" height=\"14\" rx=\"3\"/><rect x=\"43\" y=\"43\" width=\"14\" height=\"14\" rx=\"3\"/></g><circle cx=\"32\" cy=\"32\" r=\"12\" fill=\"#ffd23f\" opacity=\".25\"/></svg>",
+      "tipo": "Puzzles",
+      "v": "1",
+      "file": "luces.js",
+      "size": 8838,
+      "sha256": "b03f5ff626cb61b163d9b0491f169604b2ce849a7a594275085e4cb67fdaf426"
+    },
+    {
+      "id": "tubos",
+      "n": "Tubos de colores",
+      "d": "Ordená las bolitas para que cada tubo quede de un solo color. Niveles cada vez con más colores.",
+      "c": "#3a5bd9",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1d2433\"/><g fill=\"none\" stroke=\"#cfe3ff\" stroke-width=\"2\"><path d=\"M8 10v40a6 6 0 0 0 12 0V10\"/><path d=\"M26 10v40a6 6 0 0 0 12 0V10\"/><path d=\"M44 10v40a6 6 0 0 0 12 0V10\"/></g><circle cx=\"14\" cy=\"50\" r=\"4.5\" fill=\"#e63946\"/><circle cx=\"14\" cy=\"40\" r=\"4.5\" fill=\"#ffd23f\"/><circle cx=\"14\" cy=\"30\" r=\"4.5\" fill=\"#e63946\"/><circle cx=\"32\" cy=\"50\" r=\"4.5\" fill=\"#ffd23f\"/><circle cx=\"32\" cy=\"40\" r=\"4.5\" fill=\"#4cc9f0\"/><circle cx=\"50\" cy=\"50\" r=\"4.5\" fill=\"#4cc9f0\"/></svg>",
+      "tipo": "Puzzles",
+      "v": "1",
+      "file": "tubos.js",
+      "size": 10265,
+      "sha256": "89e56a8a13da2cd8e0348a6294b13bb592db318436f9e6ef7adb27316f231e90"
+    },
+    {
+      "id": "canerias",
+      "n": "Cañerías",
+      "d": "Girá los caños para que el agua del tanque llegue a todas las casas.",
+      "c": "#2f9bff",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1c2b36\"/><path d=\"M32 32V8M32 32H56M32 32V56M8 20H20V32H32\" stroke=\"#2f9bff\" stroke-width=\"7\" stroke-linecap=\"round\" fill=\"none\"/><path d=\"M8 44H20\" stroke=\"#8a96a3\" stroke-width=\"7\" stroke-linecap=\"round\"/><circle cx=\"32\" cy=\"32\" r=\"8\" fill=\"#2f9bff\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M50 50l6-5 6 5v7H50z\" fill=\"#ffd166\"/></svg>",
+      "tipo": "Puzzles",
+      "v": "1",
+      "file": "canerias.js",
+      "size": 9238,
+      "sha256": "7cac2e69a97960009a92d505c534600942f7ab243db0d656df60e93c9813ef22"
+    },
+    {
+      "id": "nonograma",
+      "n": "Nonograma",
+      "d": "Pintá las casillas según los números de cada fila y columna, y aparece un dibujo.",
+      "c": "#2b2a33",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#f7f3ea\"/><g fill=\"#2b2a33\"><rect x=\"22\" y=\"22\" width=\"8\" height=\"8\"/><rect x=\"30\" y=\"22\" width=\"8\" height=\"8\"/><rect x=\"22\" y=\"30\" width=\"8\" height=\"8\"/><rect x=\"38\" y=\"30\" width=\"8\" height=\"8\"/><rect x=\"30\" y=\"38\" width=\"8\" height=\"8\"/><rect x=\"38\" y=\"38\" width=\"8\" height=\"8\"/><rect x=\"22\" y=\"46\" width=\"8\" height=\"8\"/></g><g font-family=\"system-ui\" font-weight=\"800\" font-size=\"7\" fill=\"#8f8676\"><text x=\"12\" y=\"28\">2</text><text x=\"8\" y=\"36\">1 1</text><text x=\"12\" y=\"44\">2</text><text x=\"12\" y=\"52\">1</text><text x=\"24\" y=\"18\">3</text><text x=\"32\" y=\"12\">1</text><text x=\"32\" y=\"18\">1</text><text x=\"40\" y=\"18\">2</text></g><path d=\"M22 22h24v32H22z\" fill=\"none\" stroke=\"#8f8676\"/></svg>",
+      "tipo": "Puzzles",
+      "v": "1",
+      "file": "nonograma.js",
+      "size": 11780,
+      "sha256": "3f36907c417df08370219e4c9af8c39345f8eaff10dd02b44e38ae69d6d39ad3"
     }
   ]
 }

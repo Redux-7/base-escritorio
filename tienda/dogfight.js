@@ -3,6 +3,7 @@
   'use strict';
   const BM = window.BaseMini; if (!BM || !BM.register) return;
   const { h, rnd, seg, btn, overlay, confetti } = BM.util;
+  const SFX = (BM.util && BM.util.sfx) || Object.assign(() => {}, { engine: () => ({ set() {}, stop() {} }) });
   const closeOver = (root) => { const o = root.querySelector('.mg-over'); if (o) o.remove(); };
   const WORLD = 3200;
   const wrapD = (d) => { while (d > WORLD / 2) d -= WORLD; while (d < -WORLD / 2) d += WORLD; return d; };
@@ -65,7 +66,7 @@
       nextWave(); state = 'run'; msg.hidden = true; status(); start();
     }
     function nextWave() {
-      wave++; waveT = 2.5;
+      wave++; waveT = 2.5; if (wave > 1) SFX('start');
       const n = Math.min(8, 1 + wave);
       for (let i = 0; i < n; i++) {
         const ang = Math.random() * Math.PI * 2, d = 900 + Math.random() * 500;
@@ -115,6 +116,7 @@
       hud.innerHTML = `<span class="mv-big">${score}<small> puntos</small></span><span>Oleada ${wave}</span><span>Enemigos ${foes.length}</span><span class="mv-fuel${me.hp <= 3 ? ' low' : ''}"><i style="width:${Math.max(0, me.hp / me.max) * 100}%;background:linear-gradient(90deg,#27ae60,#7bd389)"></i></span>`;
     }
     function shoot(p, dir, off) {
+      if (p === me && dir == null) SFX('shoot');
       const a = dir == null ? p.a : dir, bs = M().bs;
       if (dir == null) p.cd = p.foe ? LV[lv].fire * (0.7 + Math.random() * 0.6) * (M().ww1 ? 1.2 : 1) : M().cd;
       const spread = p.foe ? (Math.random() - 0.5) * LV[lv].aim : (Math.random() - 0.5) * (dir == null ? 0.04 : 0.12);
@@ -132,8 +134,10 @@
       p.gcd = p.foe ? 1.4 + Math.random() : 0.32;
     }
     function boom(x, y, big) { for (let i = 0; i < (big ? 26 : 8); i++) { const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * (big ? 220 : 90); fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5 + Math.random() * 0.5, c: Math.random() < 0.5 ? '#ffb347' : '#ff5e3a' }); } }
+    let eng = null;
     function step(dt) {
       if (state !== 'run') return;
+      if (!eng) eng = SFX.engine('avion'); eng.set(me.v / M().vMax);
       // jugador
       const turn = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
       me.a += turn * M().turn * dt;
@@ -162,10 +166,10 @@
       for (const s of shots) {
         s.x = wrapP(s.x + s.vx * dt); s.y = wrapP(s.y + s.vy * dt); s.life -= dt;
         if (s.foe) {
-          if (Math.hypot(wrapD(s.x - me.x), wrapD(s.y - me.y)) < 20) { s.life = 0; me.hit = 0.2; boom(s.x, s.y); if (!invincible()) { me.hp--; if (me.hp <= 0) return die(); } }
+          if (Math.hypot(wrapD(s.x - me.x), wrapD(s.y - me.y)) < 20) { s.life = 0; me.hit = 0.2; boom(s.x, s.y); SFX('crash'); if (!invincible()) { me.hp--; if (me.hp <= 0) return die(); } }
         } else for (const f of foes) {
           if (f.hp > 0 && Math.hypot(wrapD(s.x - f.x), wrapD(s.y - f.y)) < 22) {
-            s.life = 0; f.hp--; f.hit = 0.15; boom(s.x, s.y);
+            s.life = 0; f.hp--; f.hit = 0.15; boom(s.x, s.y); SFX(f.hp <= 0 ? 'boom' : 'hit');
             if (f.hp <= 0) { score += (f.kind === 'bomb' ? 250 : 100) + wave * 10; if (M().ww1) crash(f); else boom(f.x, f.y, true); if (Math.random() < 0.3) pickups.push({ x: f.x, y: f.y, life: 12 }); }
             break;
           }
@@ -187,12 +191,12 @@
       }
       for (const p of fx) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; p.vx *= 0.96; p.vy *= 0.96; }
       fx = fx.filter(p => p.life > 0);
-      for (const p of pickups) { p.life -= dt; if (Math.hypot(wrapD(p.x - me.x), wrapD(p.y - me.y)) < 34) { p.life = 0; me.hp = Math.min(me.max, me.hp + 3); score += 25; } }
+      for (const p of pickups) { p.life -= dt; if (Math.hypot(wrapD(p.x - me.x), wrapD(p.y - me.y)) < 34) { p.life = 0; SFX('coin'); me.hp = Math.min(me.max, me.hp + 3); score += 25; } }
       pickups = pickups.filter(p => p.life > 0);
       if (!foes.length) { waveT -= dt; if (waveT <= 0) { score += wave * 50; nextWave(); } }
     }
     function die() {
-      state = 'over'; boom(me.x, me.y, true); draw();
+      state = 'over'; boom(me.x, me.y, true); draw(); SFX('boom'); if (eng) { eng.stop(); eng = null; }
       const s = H.get(); const rec = cheat === 'no' && score > (s[bestKey()] || 0); if (rec) s[bestKey()] = score; s.games = (s.games || 0) + 1; H.set(s); status();
       if (rec && score) confetti(root);
       overlay(root, rec && score ? '¡Nuevo récord!' : 'Te derribaron', `${score} puntos · llegaste a la oleada ${wave}`, [btn('Otra vez', newGame, 'primary')]);

@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const BM = window.BaseMini; if (!BM || !BM.register) return;
+  const SFX = (BM.util && BM.util.sfx) || Object.assign(() => {}, { engine: () => ({ set() {}, stop() {} }) });
   const { h, rnd, seg, btn, overlay, confetti, fmtTime } = BM.util;
   const closeOver = (root) => { const o = root.querySelector('.mg-over'); if (o) o.remove(); };
 
@@ -106,15 +107,17 @@
       // avance por la pista
       const N = path.length, prev = c.prog; c.prog = c.idx;
       if (prev > N * 0.8 && c.idx < N * 0.2 && c.cps >= 2) { // cruzó la meta
-        const lt = raceT - c.lapStart; c.lapStart = raceT; c.lap++; c.cps = 0;
+        const lt = raceT - c.lapStart; c.lapStart = raceT; c.lap++; c.cps = 0; if (c === me) SFX('score');
         if (!c.ai) { if (!c.best || lt < c.best) c.best = lt; const s = H.get(); if (!s['best_' + trackId + '_' + carId] || lt < s['best_' + trackId + '_' + carId]) { s['best_' + trackId + '_' + carId] = lt; H.set(s); } status(); }
         if (c.lap >= LAPS && !c.done) { c.done = true; c.finishT = raceT; c.place = cars.filter(x => x.done).length; }
       }
       if (c.cps === 0 && c.idx > N * 0.33 && c.idx < N * 0.5) c.cps = 1;
       if (c.cps === 1 && c.idx > N * 0.66 && c.idx < N * 0.85) c.cps = 2;
     }
+    let eng = null;
     function step(dt) {
-      if (state === 'count') { count -= dt; if (count <= 0) state = 'race'; return; }
+      if (state === 'count') { const c0 = Math.ceil(count); count -= dt; if (count <= 0) { state = 'race'; SFX('go'); } else if (Math.ceil(count) !== c0) SFX('beep'); return; }
+      if (!eng) eng = SFX.engine('auto'); eng.set(Math.abs(me.v) / (CARS[carId].max || 300));
       if (state !== 'race' && state !== 'finish') return;
       raceT += dt;
       const N = path.length;
@@ -132,14 +135,14 @@
       // choques entre autos
       for (let i = 0; i < cars.length; i++) for (let j = i + 1; j < cars.length; j++) {
         const a = cars[i], b = cars[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-        if (d < 40 && d > 0) { const push = (40 - d) / 2, ux = dx / d, uy = dy / d; a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push; a.v *= 0.96; b.v *= 0.96; }
+        if (d < 40 && d > 0) { if ((a === me || b === me) && Math.abs(a.v - b.v) > 60 && Math.random() < 0.2) SFX('hit'); const push = (40 - d) / 2, ux = dx / d, uy = dy / d; a.x -= ux * push; a.y -= uy * push; b.x += ux * push; b.y += uy * push; a.v *= 0.96; b.v *= 0.96; }
       }
       // árboles
-      for (const c of cars) for (const t of trees) { const dx = c.x - t.x, dy = c.y - t.y, d = Math.hypot(dx, dy); if (d < t.r + 16) { c.x = t.x + dx / d * (t.r + 16); c.y = t.y + dy / d * (t.r + 16); c.v *= 0.4; } }
+      for (const c of cars) for (const t of trees) { const dx = c.x - t.x, dy = c.y - t.y, d = Math.hypot(dx, dy); if (d < t.r + 16) { if (c === me && Math.abs(c.v) > 60) SFX('crash'); c.x = t.x + dx / d * (t.r + 16); c.y = t.y + dy / d * (t.r + 16); c.v *= 0.4; } }
       if (me.done && state === 'race') { state = 'finish'; setTimeout(finish, 1200); }
     }
     function finish() {
-      state = 'over';
+      state = 'over'; if (eng) { eng.stop(); eng = null; }
       const s = H.get(); s.games = (s.games || 0) + 1; if (me.place === 1) s.wins = (s.wins || 0) + 1; H.set(s); status();
       if (me.place === 1) confetti(root);
       overlay(root, me.place === 1 ? '¡Ganaste!' : `Llegaste ${me.place}°`, `Tiempo ${fmtLap(me.finishT)} · mejor vuelta ${fmtLap(me.best)}`, [btn('Otra carrera', newGame, 'primary')]);

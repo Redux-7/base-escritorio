@@ -1096,6 +1096,7 @@
     let lastCrash = 0;
     // daños: abolladuras en el punto del golpe (coordenadas del vehículo), y el total 0..1
     let dmgOn = H.get().noDmg !== true;
+    let traffic = H.get().trafico == null ? 50 : Math.max(0, Math.min(100, +H.get().trafico || 0));
     const isF1 = (t) => t === 'f1' || t === 'f1c';
     function myColor(skinId) { const t = VEH[veh] ? VEH[veh].t : 'auto'; if (isF1(t)) return 'liv:' + (SKIN[skinId || H.get().skin] || '#d3202a') + '|' + liv; return SKIN[skinId || H.get().skin] || '#d3202a'; }
     function hurt(o, spd, lx, ly) {
@@ -1140,8 +1141,9 @@
       else {
         for (const c of cars) aiStep(c, dt);
         cars = cars.filter(c => !c.dead && c.stuck < 40 && Math.hypot(c.x - me.x, c.y - me.y) < 520);
-        const want = Math.min(75, 32 + Math.round(G.roads.length / 20));
+        const want = Math.round(Math.min(75, 32 + Math.round(G.roads.length / 20)) * traffic / 50);
         if (cars.length < want) spawnCar(true);
+        else if (cars.length > want + 2) { const far = cars.filter(c => !c.racer && !c.bus).sort((a, b) => Math.hypot(b.x - me.x, b.y - me.y) - Math.hypot(a.x - me.x, a.y - me.y))[0]; if (far) far.dead = true; }
       }
       if (mode === 'entregas') jobStep(dt);
       if (!race) homeStep(dt);
@@ -1721,7 +1723,7 @@
       await new Promise(r => setTimeout(r, 30));
       G = prepare(m); tiles.clear(); mapId = id; const s = H.get(); s.map = id; H.set(s);
       buildMini(); buildHome(); startCar(); homeStart(); autoLights(); cars = []; skids = []; stats = { red: 0, crash: 0, done: 0, pts: 0 }; job = null;
-      for (let i = 0; i < 30; i++) spawnCar(false);
+      for (let i = 0; i < Math.round(30 * traffic / 50); i++) spawnCar(false);
       window.__barrioG = G; window.__barrio = { raw: () => cars, cars: () => cars.map(c => [Math.round(c.x), Math.round(c.y), +c.v.toFixed(1)]), me: () => me, lights: () => [...G.lights.values()].map(L => [L.x, L.y]), G: () => G, road: (x, y) => { const q = nearestRoad(x, y); return q && { w: q.r.w, d: q.d, o: q.r.o, ang: q.ang }; }, inB: (x, y) => inBuilding(x, y), race: () => race, home: () => home, homeIn: () => homeIn(), st: () => state, cam: () => [camX, camY, zoom, toastT] };
       msg.hidden = true; closeOver(root); state = 'run'; fit();
       H.status([m.name.split(',').slice(0, 2).join(','), `${G.lights.size} semáforos`]);
@@ -2182,8 +2184,16 @@
     const dmgBtn = btn(dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no', () => { dmgOn = !dmgOn; if (!dmgOn && me) { me.dmg = 0; me.hits = []; } dmgBtn.textContent = dmgOn ? '🔧 Daños: sí' : '🔧 Daños: no'; const st = H.get(); st.noDmg = !dmgOn; H.set(st); say(dmgOn ? 'Daños activados' : 'Daños desactivados: los choques no rompen el auto'); });
     const sndBtn = btn(sndOn ? '🔊 Sonido: sí' : '🔇 Sonido: no', () => { SND.init(); SND.on(!sndOn); sndBtn.textContent = sndOn ? '🔊 Sonido: sí' : '🔇 Sonido: no'; const st = H.get(); st.snd = sndOn; H.set(st); });
     const row = (label, el2) => h('label', { class: 'brr-l' }, h('small', { text: label }), el2);
+    // cantidad de autos de la compu en la calle (0 = calles vacías, 100 = el doble de lo normal)
+    const trafTxt = (v) => v <= 0 ? 'Sin tránsito' : v < 30 ? 'Poco' : v < 70 ? 'Normal' : v < 90 ? 'Mucho' : 'Hora pico';
+    const trafLbl = h('b', { text: trafTxt(traffic), style: 'font-size:12px;min-width:84px;text-align:right' });
+    const trafIn = h('input', { type: 'range', min: '0', max: '100', step: '5', value: String(traffic), style: 'flex:1;accent-color:#3a7bd5' });
+    trafIn.oninput = () => { traffic = +trafIn.value; trafLbl.textContent = trafTxt(traffic); };
+    trafIn.onchange = () => { const st = H.get(); st.trafico = traffic; H.set(st); if (traffic === 0) { cars = cars.filter(c => c.racer); } say('🚗 Tránsito: ' + trafTxt(traffic).toLowerCase()); };
+    trafIn.addEventListener('keydown', (e) => e.stopPropagation());
     const optPanel = h('div', { class: 'brr-panel brr-opts', style: 'display:none' },
       h('b', { text: '⚙ Opciones' }),
+      row('Tránsito', h('div', { style: 'display:flex;align-items:center;gap:10px' }, trafIn, trafLbl)),
       row('Clima', pick('Clima', Object.entries(WX), wx, (v) => { wx = v; const s = H.get(); s.wx = v; H.set(s); autoLights(); })),
       row('Vehículo', pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); me.c = myColor(); say(`Ahora manejás: ${V.n}`); } })),
       row('Fórmula 1: combinación con tu color', pick('Pintura', Object.entries(LIVN), liv, (v) => { liv = v; const s = H.get(); s.liv = v; H.set(s); if (me) me.c = myColor(); })),

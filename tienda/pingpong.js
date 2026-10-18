@@ -3,6 +3,7 @@
   'use strict';
   const BM = window.BaseMini; if (!BM || !BM.register) return;
   const { h, seg, btn, overlay, confetti } = BM.util;
+  const SFX = (BM.util && BM.util.sfx) || (() => {});
   const closeOver = (root) => { const o = root.querySelector('.mg-over'); if (o) o.remove(); };
   const LV = { facil: { n: 'Fácil', ai: 300 }, normal: { n: 'Normal', ai: 430 }, dificil: { n: 'Difícil', ai: 600 } };
   function pingpong(H) {
@@ -31,13 +32,13 @@
       if (serveT > 0) { serveT -= dt; return; }
       const ar = W / Hh;
       ball.x += ball.vx * ball.sp * dt / ar * 1.6; ball.y += ball.vy * ball.sp * dt * 1.6;
-      if (ball.y < 0.02) { ball.y = 0.02; ball.vy = Math.abs(ball.vy); }
-      if (ball.y > 0.98) { ball.y = 0.98; ball.vy = -Math.abs(ball.vy); }
+      if (ball.y < 0.02) { ball.y = 0.02; ball.vy = Math.abs(ball.vy); SFX('tap'); }
+      if (ball.y > 0.98) { ball.y = 0.98; ball.vy = -Math.abs(ball.vy); SFX('tap'); }
       const px = 40 / W, cx = 1 - 40 / W;
-      if (ball.vx < 0 && ball.x < px + PW / W && ball.x > px - 0.02 && Math.abs(ball.y - me) < PH / 2 + 0.02) { ball.vx = Math.abs(ball.vx); ball.vy = (ball.y - me) / (PH / 2) * 0.55; ball.sp = Math.min(2.4, ball.sp * 1.07); }
-      if (ball.vx > 0 && ball.x > cx - PW / W && ball.x < cx + 0.02 && Math.abs(ball.y - cpu) < PH / 2 + 0.02) { ball.vx = -Math.abs(ball.vx); ball.vy = (ball.y - cpu) / (PH / 2) * 0.55; ball.sp = Math.min(2.4, ball.sp * 1.07); }
-      if (ball.x < -0.02) { sCpu++; status(); if (sCpu >= 7) return end(false); serve(1); }
-      if (ball.x > 1.02) { sMe++; status(); if (sMe >= 7) return end(true); serve(-1); }
+      if (ball.vx < 0 && ball.x < px + PW / W && ball.x > px - 0.02 && Math.abs(ball.y - me) < PH / 2 + 0.02) { SFX('bounce'); ball.vx = Math.abs(ball.vx); ball.vy = (ball.y - me) / (PH / 2) * 0.55; ball.sp = Math.min(2.4, ball.sp * 1.07); }
+      if (ball.vx > 0 && ball.x > cx - PW / W && ball.x < cx + 0.02 && Math.abs(ball.y - cpu) < PH / 2 + 0.02) { SFX('bounce'); ball.vx = -Math.abs(ball.vx); ball.vy = (ball.y - cpu) / (PH / 2) * 0.55; ball.sp = Math.min(2.4, ball.sp * 1.07); }
+      if (ball.x < -0.02) { sCpu++; status(); SFX('bad'); if (sCpu >= 7) return end(false); serve(1); }
+      if (ball.x > 1.02) { sMe++; status(); SFX('score'); if (sMe >= 7) return end(true); serve(-1); }
     }
     function end(won) {
       state = 'over';

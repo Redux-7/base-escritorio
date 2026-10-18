@@ -3,6 +3,7 @@
   'use strict';
   const BM = window.BaseMini; if (!BM || !BM.register) return;
   const { h, seg, btn, overlay, confetti } = BM.util;
+  const SFX = (BM.util && BM.util.sfx) || Object.assign(() => {}, { engine: () => ({ set() {}, stop() {} }) });
   const closeOver = (root) => { const o = root.querySelector('.mg-over'); if (o) o.remove(); };
   const FW = 50, FH = 32, GOAL = 4.2, PR = 0.75, BR = 0.32; // cancha de fútbol 5 (metros)
   const LV = { facil: { n: 'Fácil', sp: 5.6, tackle: 0.9, aim: 0.22 }, normal: { n: 'Normal', sp: 6.4, tackle: 1.6, aim: 0.13 }, dificil: { n: 'Difícil', sp: 7.1, tackle: 2.6, aim: 0.07 } };
@@ -48,7 +49,7 @@
     function kickoff(t) {
       for (const p of players) { const [x, y] = home(p, false); p.x = p.t === 0 ? Math.min(x, FW / 2 - 1.5) : Math.max(x, FW / 2 + 1.5); p.y = y; p.vx = p.vy = 0; p.stun = 0; }
       const k = players.find(p => p.t === t && p.i === 3); k.x = FW / 2 - teams[t].dir * 0.9; k.y = FH / 2;
-      ball = { x: FW / 2, y: FH / 2, vx: 0, vy: 0, z: 0, vz: 0 }; owner = null; kickT = 0; pause = 1.2;
+      ball = { x: FW / 2, y: FH / 2, vx: 0, vy: 0, z: 0, vz: 0 }; owner = null; kickT = 0; pause = 1.2; setTimeout(() => SFX('whistle'), 900);
       ctrl = players.find(p => p.t === 0 && p.i === 3);
     }
     function status() { H.status([`${teams[0].name} ${score[0]} - ${score[1]} ${teams[1].name}`, `${half}º tiempo`, H.get().wins ? `Ganados ${H.get().wins}` : '']); }
@@ -59,7 +60,7 @@
       const dx = tx - p.x, dy = ty - p.y, L = hyp(dx, dy) || 1;
       ball.x = p.x + dx / L * (PR + BR + 0.05); ball.y = p.y + dy / L * (PR + BR + 0.05);
       ball.vx = dx / L * power; ball.vy = dy / L * power; ball.vz = lob ? Math.min(7, power * 0.35) : 0;
-      owner = null; kickT = 0.28; lastTouch = p;
+      owner = null; kickT = 0.28; lastTouch = p; SFX(power > 14 ? 'hit' : 'tap');
     }
     const goalX = (t) => teams[t].dir === 1 ? FW : 0;
     function shoot(p, power) {
@@ -134,7 +135,7 @@
       if (pause > 0) { pause -= dt; return; }
       clock += dt;
       if (clock >= mins * 30 * half) {
-        if (half === 1) { half = 2; say('Fin del primer tiempo', 2); kickoff(1); status(); return; }
+        if (half === 1) { half = 2; SFX('whistle'); say('Fin del primer tiempo', 2); kickoff(1); status(); return; }
         return end();
       }
       kickT -= dt;
@@ -186,7 +187,7 @@
         if (ball.x > FW && inGoal) return goal(0);
         // paredes (en el fútbol 5 la pelota rebota)
         if (ball.y < BR) { ball.y = BR; ball.vy = Math.abs(ball.vy) * 0.75; }
-        if (ball.y > FH - BR) { ball.y = FH - BR; ball.vy = -Math.abs(ball.vy) * 0.75; }
+        if (ball.y > FH - BR) { ball.y = FH - BR; if (ball.vy > 4) SFX('bounce'); ball.vy = -Math.abs(ball.vy) * 0.75; }
         if (!inGoal) { if (ball.x < BR) { ball.x = BR; ball.vx = Math.abs(ball.vx) * 0.75; } if (ball.x > FW - BR) { ball.x = FW - BR; ball.vx = -Math.abs(ball.vx) * 0.75; } }
         // agarrar la pelota
         if (kickT <= 0 && ball.z < 0.8) {
@@ -194,7 +195,7 @@
           for (const p of players) { if (p.stun > 0) continue; const d = hyp(p.x - ball.x, p.y - ball.y); if (d < bd) { bd = d; best = p; } }
           if (best) {
             // el arquero ataja los remates fuertes
-            if (best.gk && hyp(ball.vx, ball.vy) > 9) { say('¡Atajada!', 1); }
+            if (best.gk && hyp(ball.vx, ball.vy) > 9) { say('¡Atajada!', 1); SFX('pop'); }
             owner = best; if (best.t === 0) ctrl = best;
           }
         }
@@ -207,7 +208,7 @@
     }
     function goal(t) {
       score[t]++; status();
-      say(t === 0 ? '¡GOOOL!' : 'Gol de la compu', 2.2);
+      say(t === 0 ? '¡GOOOL!' : 'Gol de la compu', 2.2); if (t !== 0) SFX('bad');
       if (t === 0) confetti(root);
       kickoff(1 - t); pause = 2.2;
     }

@@ -1,7 +1,7 @@
 {
-  "version": "2.37.0",
-  "file": "versiones/base-app-2.37.0.zip",
-  "sha256": "041ee9cf5e8a1e1ea63d5b4fb0dafff7655757d1df20faea7da76d24c64f2661",
-  "size": 517708,
-  "notes": "Novedades 2.37\n- Tablet: los Ajustes de Base se ven igual que en la compu (secciones con íconos, buscador, fondos y relojes con vista previa, modo claro/oscuro).\n- Tablet: suma Automático, Compu y copias, y la papelera."
+  "version": "2.38.0",
+  "file": "versiones/base-app-2.38.0.zip",
+  "sha256": "4b6692f992c8bcca45d23e912f157adc07a36a6f4c62dacdee5af82e9b36810b",
+  "size": 520912,
+  "notes": "Novedades 2.38\n- Sonido en todos los mini juegos (con un botón para apagarlo).\n- En la Tienda: 5 juegos nuevos de puzzles (Deslizá, Luces, Tubos de colores, Cañerías y Nonograma)."
 }
