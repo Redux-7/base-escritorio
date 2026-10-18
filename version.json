@@ -1,7 +1,7 @@
 {
-  "version": "2.31.0",
-  "file": "versiones/base-app-2.31.0.zip",
-  "sha256": "712f5fad299d070444449c7013c44b98428164f2398374399d8821656475fb9b",
-  "size": 491406,
-  "notes": "Novedades 2.31\n- Panel de Juegos: el recuadro de Mini juegos muestra los últimos 5 que jugaste.\n- En la Tienda: 5 juegos de letras nuevos (Autodefinido, Sopa de letras, Palabrero, Letras en ronda y Ahorcado)."
+  "version": "2.32.0",
+  "file": "versiones/base-app-2.32.0.zip",
+  "sha256": "0a314e751a613dc2536bf5ace8ac0ef333a3a130f24d85512a73276f6fe02cfe",
+  "size": 492223,
+  "notes": "Novedades 2.32\n- Buscaminas: 9 temas nuevos (Retro, Pasto, Nieve, Otoño, Lavanda, Océano, Rosa, Carbón y Alto contraste)."
 }
