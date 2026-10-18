@@ -1,7 +1,7 @@
 {
-  "version": "2.33.0",
-  "file": "versiones/base-app-2.33.0.zip",
-  "sha256": "613c346ba56400279beed3d46ca8d309ca81d5133ae28251de0ccc4bcd5e8156",
-  "size": 492535,
-  "notes": "Novedades 2.33\n- El tablero Trabajo ya no es fijo: queda oculto y lo podés volver a mostrar en Ajustes."
+  "version": "2.34.0",
+  "file": "versiones/base-app-2.34.0.zip",
+  "sha256": "55e77f4419a6a85f830c4fb4ea588e841a3a13f90ded6a7987227d7ecc665c77",
+  "size": 494535,
+  "notes": "Novedades 2.34\n- Fondos nuevos más elegantes y texturas.\n- En Ajustes, el fondo ahora es un desplegable ordenado por grupos."
 }
