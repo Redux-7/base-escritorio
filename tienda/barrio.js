@@ -106,6 +106,24 @@
       for (const a of apps) { const d = Math.abs(angDiff(Math.atan2(a.uy, a.ux) - a0)); a.g = (d < Math.PI / 4 || d > 3 * Math.PI / 4) ? 0 : 1; }
       G.lights.set(n, { n, x, y, apps, maxW, off: (li++ * 7.3) % 30 });
     }
+    // una esquina puede tener varios nodos con semáforo (avenidas con dos manos separadas, o datos repetidos):
+    // se agrupan en un solo cruce con el mismo ciclo, y los tramos cortos entre esos nodos no llevan semáforo propio
+    {
+      const Ls = [...G.lights.values()], par = Ls.map((_, i) => i), f = (i) => par[i] === i ? i : (par[i] = f(par[i]));
+      for (let i = 0; i < Ls.length; i++) for (let j = i + 1; j < Ls.length; j++) if (Math.hypot(Ls[i].x - Ls[j].x, Ls[i].y - Ls[j].y) < 36) par[f(i)] = f(j);
+      const groups = new Map(); Ls.forEach((L, i) => { const k = f(i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(L); });
+      for (const grp of groups.values()) {
+        if (grp.length < 2) continue;
+        const ref = grp[0], a0 = Math.atan2(ref.apps[0].uy, ref.apps[0].ux), mw = Math.max(...grp.map(L => L.maxW));
+        for (const L of grp) {
+          L.off = ref.off; L.cluster = grp; L.maxW = Math.max(L.maxW, Math.min(mw, L.maxW + 6));
+          for (const a of L.apps) {
+            const d = Math.abs(angDiff(Math.atan2(a.uy, a.ux) - a0)); a.g = (d < Math.PI / 4 || d > 3 * Math.PI / 4) ? 0 : 1;
+            for (const O of grp) { if (O === L) continue; const dx = L.x - O.x, dy = L.y - O.y, dd = Math.hypot(dx, dy) || 1; if ((dx * a.ux + dy * a.uy) / dd > 0.9) { a.inner = true; break; } }
+          }
+        }
+      }
+    }
     // carteles con el nombre de las calles en las esquinas
     G.signs = [];
     for (const n of corners) {
@@ -125,23 +143,35 @@
     G.lampsCorner = corners.map(n => { const [x, y] = nodePos(n); let mw = 0; for (const [ri] of links.get(n)) mw = Math.max(mw, roads[ri].w); return [x + mw / 2 + 1.5, y - mw / 2 - 1.5]; });
     // estaciones de servicio: las reales del mapa (si vinieron) o en esquinas de avenidas, separadas ~700 m
     G.stations = [];
+    // distancia al asfalto más cercano (sólo calles de verdad, no los caminitos internos)
+    const roadDist = (x, y) => { const g = grid.get(key(Math.floor(x / C), Math.floor(y / C))); if (!g) return 99; let bd = 99; for (const sg of g.s) { const r = roads[Math.floor(sg / 65536)]; if (r.k > 6) continue; const i = sg % 65536, [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); bd = Math.min(bd, Math.hypot(x - ax - dx * t, y - ay - dy * t) - r.w / 2); } return bd; };
+    const nearSeg = (x, y) => { let best = null, bd = 1e9; const cx = Math.floor(x / C), cy = Math.floor(y / C); for (let i2 = -1; i2 <= 1; i2++) for (let j2 = -1; j2 <= 1; j2++) { const g = grid.get(key(cx + i2, cy + j2)); if (!g) continue; for (const sg of g.s) { const r = roads[Math.floor(sg / 65536)]; if (r.k > 6) continue; const i = sg % 65536, [ax, ay] = r.p[i], [bx, by] = r.p[i + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)), d = Math.hypot(x - ax - dx * t, y - ay - dy * t); if (d < bd) { bd = d; best = { r, i, px: ax + dx * t, py: ay + dy * t, ux: dx / Math.sqrt(L2), uy: dy / Math.sqrt(L2), side: Math.sign(dx * (y - ay) - dy * (x - ax)) || 1 }; } } } return best; };
+    // la estación va en la manzana: la playa sale del cordón hacia adentro y no puede pisar ninguna otra calle
     const addStation = (x, y) => {
-      let best = null, bd = 1e9;
-      for (const n of cornersNear(x, y)) { const [nx, ny] = nodePos(n), d = (nx - x) ** 2 + (ny - y) ** 2; if (d < bd) { bd = d; best = n; } }
-      const n = best; if (n == null) return;
-      const [nx, ny] = nodePos(n); let mw = 0, ang = 0; for (const [ri, i] of links.get(n)) { const r = roads[ri]; if (r.w > mw) { mw = r.w; const j = i < r.p.length - 1 ? i + 1 : i - 1; ang = Math.atan2(r.p[j][1] - r.p[i][1], r.p[j][0] - r.p[i][0]); } }
-      // en la vereda, al costado de la avenida y corrido de la esquina
-      const ux = Math.cos(ang), uy = Math.sin(ang), vx = -uy, vy = ux;
-      // la playa arranca en el cordón y entra en la vereda/manzana; el centro está a 28 m de la esquina
-      const ex = nx + ux * 28 + vx * (mw / 2), ey = ny + uy * 28 + vy * (mw / 2);
-      const bays = [];
-      for (const iu of [-5, 5]) for (const bv of [[6, 8.6], [10.4, 13]]) bays.push({ u0: iu - 3.6, u1: iu + 3.6, v0: bv[0], v1: bv[1] });
-      G.stations.push({ ex, ey, ux, uy, vx, vy, ang, bays, x: ex + vx * 8.5, y: ey + vy * 8.5, rx: ex + vx * 7.3, ry: ey + vy * 7.3 });
+      const q = nearSeg(x, y); if (!q) return false;
+      const { r, px, py, ux, uy } = q;
+      for (const sh of [0, -8, 8, -16, 16, -26, 26, -36, 36]) for (const side of [q.side, -q.side]) {
+        const vx = -uy * side, vy = ux * side, ex = px + ux * sh + vx * (r.w / 2), ey = py + uy * sh + vy * (r.w / 2);
+        let ok = true;
+        for (const u of [-16, -8, 0, 8, 16]) { for (const v of [2.2, 6, 10, 14, 17.5]) { if (roadDist(ex + ux * u + vx * v, ey + uy * u + vy * v) < 0.6) { ok = false; break; } } if (!ok) break; if (roadDist(ex + ux * u - vx * 1, ey + uy * u - vy * 1) > 0.3) { ok = false; break; } }
+        if (!ok || G.stations.some(st => Math.hypot(st.ex - ex, st.ey - ey) < 45)) continue;
+        const bays = [];
+        for (const iu of [-5, 5]) for (const bv of [[6, 8.6], [10.4, 13]]) bays.push({ u0: iu - 3.6, u1: iu + 3.6, v0: bv[0], v1: bv[1] });
+        G.stations.push({ ex, ey, ux, uy, vx, vy, ang: Math.atan2(uy, ux), bays, x: ex + vx * 8.5, y: ey + vy * 8.5, rx: ex + vx * 7.3, ry: ey + vy * 7.3 });
+        return true;
+      }
+      return false;
     };
     for (const f of (m.fuel || [])) addStation(f[0] * S, f[1] * S);
     if (G.stations.length < 4) {
-      const cands = corners.filter(n => links.get(n).some(([ri]) => roads[ri].k <= 3)).map(n => nodePos(n)).sort((a, b) => hsh(a[0] | 0, a[1] | 0) - hsh(b[0] | 0, b[1] | 0));
-      for (const [x, y] of cands) { if (G.stations.length >= 14) break; if (G.stations.some(st => (st.x - x) ** 2 + (st.y - y) ** 2 < 700 * 700)) continue; addStation(x, y); }
+      const cands = corners.filter(n => links.get(n).some(([ri]) => roads[ri].k <= 3)).sort((a, b) => hsh(a % 100003, 7) - hsh(b % 100003, 7));
+      for (const n of cands) {
+        if (G.stations.length >= 14) break;
+        const [x, y] = nodePos(n); if (G.stations.some(st => (st.x - x) ** 2 + (st.y - y) ** 2 < 700 * 700)) continue;
+        // a unos 35 m de la esquina, sobre la avenida
+        const av = links.get(n).find(([ri]) => roads[ri].k <= 3); const r = roads[av[0]], i = av[1], j = i < r.p.length - 1 ? i + 1 : i - 1, dx = r.p[j][0] - x, dy = r.p[j][1] - y, L = Math.hypot(dx, dy) || 1;
+        addStation(x + dx / L * 35 - dy / L * (r.w / 2 + 8), y + dy / L * 35 + dx / L * (r.w / 2 + 8));
+      }
     }
     // faroles a lo largo de las calles (uno cada ~32 m, alternando veredas) + los de las esquinas
     G.lamps = G.lampsCorner.slice();
@@ -189,6 +219,7 @@
     const cv = h('canvas', { class: 'mv-cv' }); root.append(cv);
     const hud = h('div', { class: 'mv-hud' }), msg = h('div', { class: 'sn-msg' }), toastEl = h('div', { class: 'br-toast' });
     root.append(hud, msg, toastEl); msg.hidden = true;
+    root.addEventListener('pointerdown', () => { try { SND.init(); } catch {} });
     const ctx = cv.getContext('2d');
     let W = 800, Hh = 500, lastSz = '', rf = 0;
     const fit = () => { W = Math.max(320, root.clientWidth); Hh = Math.max(240, root.clientHeight); const d = Math.min(2, devicePixelRatio || 1); cv.width = W * d; cv.height = Hh * d; cv.style.width = W + 'px'; cv.style.height = Hh + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); DPR = d; };
@@ -374,10 +405,11 @@
       for (const L of G.lights.values()) {
         if (L.x < x0 - 40 || L.x > x1 + 40 || L.y < y0 - 40 || L.y > y1 + 40) continue;
         for (const a of L.apps) {
+          if (a.inner) continue;
           const d = L.maxW / 2 + 2.6, cx = L.x - a.ux * d, cy = L.y - a.uy * d, ang = Math.atan2(a.uy, a.ux);
           g.save(); g.translate(cx, cy); g.rotate(ang); g.fillStyle = 'rgba(238,238,232,.85)';
           for (let s = -a.w / 2 + 0.5; s < a.w / 2 - 0.4; s += 1.1) g.fillRect(-1.4, s, 2.8, 0.55);
-          if (a.inbound) { if (a.ow) g.fillRect(-2.4, -a.w / 2 + 0.3, 0.4, a.w - 0.6); else g.fillRect(-2.4, 0, 0.4, a.w / 2 - 0.3); }
+          if (a.inbound && !a.inner) { if (a.ow) g.fillRect(-2.4, -a.w / 2 + 0.3, 0.4, a.w - 0.6); else g.fillRect(-2.4, 0, 0.4, a.w / 2 - 0.3); }
           g.restore();
         }
       }
@@ -622,7 +654,7 @@
       const endNode = r.nd[c.i + c.dir], L = G.lights.get(endNode);
       const distEnd = (1 - c.t) * c.segL;
       if (L) {
-        const ap = approachOf(L, c.ux, c.uy), st = ap ? lightState(L, ap.g) : 'g';
+        const ap = approachOf(L, c.ux, c.uy), st = ap && !ap.inner ? lightState(L, ap.g) : 'g';
         const stopD = distEnd - (L.maxW / 2 + 4);
         if ((st === 'r' || (st === 'y' && stopD > 9)) && stopD > -1.5) want = Math.min(want, Math.sqrt(Math.max(0, 2 * 4 * (stopD - 0.5))));
       }
@@ -693,7 +725,7 @@
       // cargar nafta: frenado al lado de una estación
       filling = false; repairing = false;
       inBay = false;
-      { const L = lotAt(me.x, me.y); if (L) for (const b of L.st.bays) if (L.u > b.u0 + 0.6 && L.u < b.u1 - 0.6 && L.v > b.v0 + 0.2 && L.v < b.v1 - 0.2) { inBay = true; if (Math.abs(me.vf) < 0.5 && me.dmg > 0) { me.dmg = Math.max(0, me.dmg - dt * 0.12); repairing = true; if (me.dmg === 0) { me.hits = []; say('🔧 Auto reparado'); } else if (me.hits.length && me.hits.length > Math.ceil(me.dmg * 14)) me.hits.shift(); } if (Math.abs(me.vf) < 0.5 && me.fuel < 1) { me.fuel = Math.min(1, me.fuel + dt * 0.12); filling = true; if (me.fuel >= 1) say('⛽ Tanque lleno'); } break; }
+      { const L = lotAt(me.x, me.y); if (L) for (const b of L.st.bays) if (L.u > b.u0 + 0.6 && L.u < b.u1 - 0.6 && L.v > b.v0 + 0.2 && L.v < b.v1 - 0.2) { inBay = true; if (Math.abs(me.vf) < 0.5 && me.dmg > 0) { me.dmg = Math.max(0, me.dmg - dt * 0.12); repairing = true; if (me.dmg === 0) { me.hits = []; say('🔧 Auto reparado'); } else if (me.hits.length && me.hits.length > Math.ceil(me.dmg * 14)) me.hits.shift(); } if (Math.abs(me.vf) < 0.5 && me.fuel < 1) { me.fuel = Math.min(1, me.fuel + dt * 0.12); filling = true; if (me.fuel >= 1) { say('⛽ Tanque lleno'); SND.blip(1320, 0.25, 'sine', 0.12); } } break; }
         if (L && !inBay && me.fuel < 0.95 && fuelWarn <= 0) { say('Pará dentro de un recuadro amarillo, al lado del surtidor'); fuelWarn = 6; } }
       if (brk) a += me.vf > 0.3 ? -9.5 * wet : -3 * (me.vf > -6 ? 1 : 0);
       if (hb) a += me.vf > 0 ? -4 : 4;
@@ -769,14 +801,14 @@
       for (const L of G.lights.values()) { if (Math.abs(L.x - me.x) < L.maxW && Math.abs(L.y - me.y) < L.maxW && Math.hypot(L.x - me.x, L.y - me.y) < L.maxW / 2 + 1) { inside = L; break; } }
       if (inside && me.inLight !== inside && me.vf > 2) {
         const ap = approachOf(inside, Math.cos(me.a), Math.sin(me.a));
-        if (ap && lightState(inside, ap.g) === 'r') { stats.red++; say('🚦 ¡Cruzaste en rojo!', true); if (job) job.red++; }
+        if (ap && !ap.inner && lightState(inside, ap.g) === 'r') { stats.red++; say('🚦 ¡Cruzaste en rojo!', true); SND.blip(180, 0.35, 'sawtooth', 0.12); SND.blip(150, 0.45, 'sawtooth', 0.1); if (job) job.red++; }
       }
       me.inLight = inside;
     }
     let lastCrash = 0;
     // daños: abolladuras en el punto del golpe (coordenadas del vehículo), y el total 0..1
     function hurt(o, spd, lx, ly) {
-      const sev = Math.max(0.02, Math.min(0.35, (spd - 2) / 32)); o.dmg = Math.min(1, (o.dmg || 0) + sev);
+      const sev = Math.max(0.02, Math.min(0.35, (spd - 2) / 32)); o.dmg = Math.min(1, (o.dmg || 0) + sev); if (o === me) SND.crash(sev * 2.5);
       const hx = Math.max(-o.len / 2, Math.min(o.len / 2, lx)), hy = Math.max(-o.wid / 2, Math.min(o.wid / 2, ly));
       (o.hits || (o.hits = [])).push([hx, hy, sev, Math.random()]); if (o.hits.length > 14) o.hits.shift();
     }
@@ -800,13 +832,15 @@
       if (Math.hypot(job.x - me.x, job.y - me.y) < 14 && Math.abs(me.vf) < 6) {
         const p = Math.max(20, Math.round(100 + job.time * 3 - job.red * 25 - job.crash * 15));
         stats.pts += p; stats.done++; const s = H.get(); s.done = (s.done || 0) + 1; if (stats.pts > (s.best || 0)) s.best = stats.pts; H.set(s);
-        say(`✅ ¡Entregado! +${p} puntos`); job = null; setTimeout(() => { if (state === 'run' && mode === 'entregas') newJob(); }, 1500);
+        say(`✅ ¡Entregado! +${p} puntos`); SND.blip(660, 0.18, 'triangle', 0.16); setTimeout(() => SND.blip(990, 0.3, 'triangle', 0.16), 140); job = null; setTimeout(() => { if (state === 'run' && mode === 'entregas') newJob(); }, 1500);
       } else if (job.time <= 0) { say('⏰ Se te pasó el tiempo de esa entrega', true); job = null; setTimeout(() => { if (state === 'run' && mode === 'entregas') newJob(); }, 1500); }
     }
 
     // ---------- bucle ----------
+    let tickPh = false;
     function step(dt) {
       clock += dt;
+      { const ph = (clock * 2.6) % 1 < 0.5; if (ph !== tickPh) { tickPh = ph; if (blink.l || blink.r || blink.haz) SND.blip(ph ? 2100 : 1500, 0.025, 'square', 0.05); } }
       carStep(dt);
       for (const c of cars) aiStep(c, dt);
       cars = cars.filter(c => !c.dead && c.stuck < 40 && Math.hypot(c.x - me.x, c.y - me.y) < 520);
@@ -936,7 +970,7 @@
       for (const L of G.lights.values()) {
         if (Math.abs(L.x - camX) > W / zoom || Math.abs(L.y - camY) > Hh / zoom) continue;
         for (const a of L.apps) {
-          if (!a.inbound) continue;
+          if (!a.inbound || a.inner) continue;
           const st = lightState(L, a.g);
           if (a.px == null) {
             // el poste va en la vereda, a la derecha: si cae sobre otra calle, se corre hacia afuera o hacia atrás
@@ -984,7 +1018,7 @@
       for (const L of G.lights.values()) {
         const dx = L.x - me.x, dy = L.y - me.y; if (Math.abs(dx) > 90 || Math.abs(dy) > 90) continue;
         for (const a of L.apps) {
-          if (!a.inbound || a.ux * hx + a.uy * hy < 0.7) continue;
+          if (!a.inbound || a.inner || a.ux * hx + a.uy * hy < 0.7) continue;
           const along = dx * a.ux + dy * a.uy, lat = Math.abs(-dx * a.uy + dy * a.ux), stop = along - (L.maxW / 2 + 4.8);
           if (along < L.maxW / 2 || along > 85 || lat > a.w / 2 + 2.5) continue;
           if (along < bd) { bd = along; myLight = { L, a, dist: stop }; }
@@ -1162,6 +1196,20 @@
           ctx.fillStyle = '#ffd60a'; ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-10, -11); ctx.lineTo(-5, 0); ctx.lineTo(-10, 11); ctx.closePath(); ctx.fill(); ctx.restore();
         }
       }
+      // flecha verde hacia la estación de servicio más cercana (más visible con poca nafta)
+      if (G.stations.length) {
+        let st = null, bd = 1e12; for (const s3 of G.stations) { const d = (s3.rx - me.x) ** 2 + (s3.ry - me.y) ** 2; if (d < bd) { bd = d; st = s3; } }
+        const dist = Math.sqrt(bd), low = me.fuel < 0.3 || (me.dmg || 0) > 0.5;
+        const dx = st.rx - camX, dy = st.ry - camY, sx = W / 2 + dx * zoom, sy = Hh / 2 + dy * zoom;
+        if (sx < 30 || sy < 30 || sx > W - 30 || sy > Hh - 30) {
+          const a = Math.atan2(dy, dx), r = Math.min(W, Hh) / 2 - (low ? 60 : 64), px = W / 2 + Math.cos(a) * r, py = Hh / 2 + Math.sin(a) * r, pul = low ? 1 + Math.sin(clock * 6) * 0.12 : 1;
+          ctx.save(); ctx.translate(px, py); ctx.globalAlpha = low ? 1 : 0.8;
+          ctx.save(); ctx.rotate(a); ctx.scale(pul, pul); ctx.fillStyle = '#1f9d55'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-8, -12); ctx.lineTo(-3, 0); ctx.lineTo(-8, 12); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+          const t = `⛽ ${dist < 1000 ? Math.round(dist / 10) * 10 + ' m' : (dist / 1000).toFixed(1) + ' km'}`; ctx.font = '700 11px system-ui'; const tw = ctx.measureText(t).width + 12, lx = -Math.cos(a) * 30 - tw / 2, ly = -Math.sin(a) * 26 - 9;
+          ctx.fillStyle = low ? 'rgba(31,157,85,.95)' : 'rgba(16,20,28,.8)'; ctx.beginPath(); ctx.roundRect(lx, ly, tw, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(t, lx + tw / 2, ly + 9.5);
+          ctx.restore();
+        }
+      }
       // radar redondo estilo GPS: gira con el auto (siempre para adelante es arriba)
       if (G) {
         const R = 74, cx = W - R - 18, cy = Hh - R - 18, RANGE = 260, k = R / RANGE;
@@ -1268,6 +1316,7 @@
     function frame(t) {
       const dt = Math.min(0.05, lastT ? (t - lastT) / 1000 : 0.016); lastT = t;
       if (state === 'run') { step(dt); draw(); hudPaint(); }
+      SND.update(state === 'run');
       raf = requestAnimationFrame(frame);
     }
     function run() { cancelAnimationFrame(raf); lastT = 0; raf = requestAnimationFrame(frame); }
@@ -1336,11 +1385,71 @@
       setTimeout(() => inp.focus(), 50);
     }
 
+
+    // ---------- sonidos (sintetizados, sin archivos) ----------
+    let sndOn = H.get().snd !== false;
+    const SND = (() => {
+      let A = null, master, eng1, eng2, engF, engG, tireG, rainG, sirenO, sirenG, sirenL, hornG, pumpG, noiseBuf;
+      function init() {
+        if (A) return true;
+        const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+        A = new AC(); master = A.createGain(); master.gain.value = sndOn ? 0.55 : 0; master.connect(A.destination);
+        noiseBuf = A.createBuffer(1, A.sampleRate * 2, A.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const noise = () => { const n = A.createBufferSource(); n.buffer = noiseBuf; n.loop = true; n.start(); return n; };
+        // motor: dos osciladores graves con filtro
+        eng1 = A.createOscillator(); eng1.type = 'sawtooth'; eng2 = A.createOscillator(); eng2.type = 'square';
+        engF = A.createBiquadFilter(); engF.type = 'lowpass'; engF.frequency.value = 400; engF.Q.value = 3; engG = A.createGain(); engG.gain.value = 0;
+        const e2g = A.createGain(); e2g.gain.value = 0.5; eng1.connect(engF); eng2.connect(e2g); e2g.connect(engF); engF.connect(engG); engG.connect(master); eng1.start(); eng2.start();
+        // gomas que chillan
+        const tf = A.createBiquadFilter(); tf.type = 'bandpass'; tf.frequency.value = 1400; tf.Q.value = 6; tireG = A.createGain(); tireG.gain.value = 0; noise().connect(tf); tf.connect(tireG); tireG.connect(master);
+        // lluvia
+        const rf = A.createBiquadFilter(); rf.type = 'highpass'; rf.frequency.value = 2200; rainG = A.createGain(); rainG.gain.value = 0; noise().connect(rf); rf.connect(rainG); rainG.connect(master);
+        // sirena del patrullero
+        sirenO = A.createOscillator(); sirenO.type = 'triangle'; sirenO.frequency.value = 900; sirenL = A.createOscillator(); sirenL.frequency.value = 0.55; const sl = A.createGain(); sl.gain.value = 320; sirenL.connect(sl); sl.connect(sirenO.frequency); sirenG = A.createGain(); sirenG.gain.value = 0; sirenO.connect(sirenG); sirenG.connect(master); sirenO.start(); sirenL.start();
+        // bocina
+        hornG = A.createGain(); hornG.gain.value = 0; for (const f of [392, 494]) { const o = A.createOscillator(); o.type = 'square'; o.frequency.value = f; const of = A.createBiquadFilter(); of.type = 'lowpass'; of.frequency.value = 1800; o.connect(of); of.connect(hornG); o.start(); } hornG.connect(master);
+        // surtidor cargando
+        const po = A.createOscillator(); po.type = 'sine'; po.frequency.value = 180; pumpG = A.createGain(); pumpG.gain.value = 0; po.connect(pumpG); pumpG.connect(master); po.start();
+        return true;
+      }
+      const set = (g, v, t = 0.06) => { if (g) g.gain.setTargetAtTime(v, A.currentTime, t); };
+      function blip(freq, dur, type = 'sine', vol = 0.15, slide = 0) {
+        if (!A || !sndOn) return; const o = A.createOscillator(), g = A.createGain(); o.type = type; o.frequency.value = freq; if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), A.currentTime + dur);
+        g.gain.setValueAtTime(vol, A.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, A.currentTime + dur); o.connect(g); g.connect(master); o.start(); o.stop(A.currentTime + dur + 0.02);
+      }
+      function crash(sev) {
+        if (!A || !sndOn) return; const n = A.createBufferSource(); n.buffer = noiseBuf; const f = A.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500 + sev * 1500; const g = A.createGain();
+        const v = 0.25 + sev * 0.6; g.gain.setValueAtTime(v, A.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, A.currentTime + 0.45 + sev * 0.5); n.connect(f); f.connect(g); g.connect(master); n.start(); n.stop(A.currentTime + 1.2);
+        blip(140 + Math.random() * 60, 0.3, 'square', 0.08 + sev * 0.1, -80); if (sev > 0.15) setTimeout(() => blip(2400 + Math.random() * 800, 0.25, 'triangle', 0.05), 60);
+      }
+      return {
+        init, blip, crash,
+        on(v) { sndOn = v; if (A) master.gain.setTargetAtTime(v ? 0.55 : 0, A.currentTime, 0.05); },
+        horn(v) { if (A) set(hornG, v && sndOn ? 0.09 : 0, 0.015); },
+        update(run) {
+          if (!A) return;
+          if (!run || !me) { for (const g of [engG, tireG, rainG, sirenG, hornG, pumpG]) set(g, 0, 0.05); return; }
+          const V = me.V, spd = Math.abs(me.vf), span = V.vmax / 5, gear = Math.min(4, Math.floor(spd / span)), frac = (spd - gear * span) / span;
+          const base = me.type === 'moto' ? 70 : me.type === 'bus' || me.type === 'truck' ? 28 : me.type === 'sport' ? 52 : 40;
+          const rpm = spd < 0.3 ? 0 : 0.25 + frac * 0.75 + (keys.up ? 0.08 : 0), f = base * (1 + rpm * 1.6) * (1 + gear * 0.04);
+          eng1.frequency.setTargetAtTime(f, A.currentTime, 0.05); eng2.frequency.setTargetAtTime(f / 2, A.currentTime, 0.05);
+          engF.frequency.setTargetAtTime(300 + rpm * 1300 + (keys.up ? 300 : 0), A.currentTime, 0.08);
+          set(engG, me.fuel <= 0 ? 0 : (0.045 + rpm * 0.05 + (keys.up ? 0.03 : 0)) * (1 + (me.dmg || 0) * 0.3), 0.08);
+          set(tireG, Math.min(0.13, Math.max(0, (Math.abs(me.vr) - 1.6) / 5) * 0.13 + (keys.hb && spd > 4 ? 0.07 : 0) + (keys.down && me.vf > 9 ? 0.05 : 0)), 0.05);
+          set(rainG, isRain() ? 0.05 : 0, 0.4);
+          set(sirenG, siren && me.type === 'police' ? 0.045 : 0, 0.05);
+          set(pumpG, filling ? 0.025 : 0, 0.1);
+        }
+      };
+    })();
+
     // ---------- controles ----------
     const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right', ' ': 'hb' };
-    const keyUp = (e) => { const k = KEYS[e.key]; if (k) keys[k] = false; };
+    const keyUp = (e) => { const k = KEYS[e.key]; if (k) keys[k] = false; if (e.key === 'h' || e.key === 'H') SND.horn(false); };
     addEventListener('keyup', keyUp);
     const key = (e) => {
+      SND.init();
+      if ((e.key === 'h' || e.key === 'H') && state === 'run') { SND.horn(true); return true; }
       if ((e.key === 'p' || e.key === 'P') && state === 'pause') { msg.hidden = true; state = 'run'; return true; }
       if (state !== 'run') return false;
       if (e.key === 'r' || e.key === 'R') {
@@ -1361,7 +1470,8 @@
       pick('Vehículo', Object.entries(VEH).map(([k, v]) => [k, v.n]), veh, (v) => { veh = v; const s = H.get(); s.veh = v; H.set(s); if (me) { const V = VEH[v]; Object.assign(me, { len: V.len, wid: V.wid, type: V.t, V }); say(`Ahora manejás: ${V.n}`); } }),
       seg([['entregas', 'Entregas'], ['libre', 'Paseo libre']], mode, (v) => { mode = v; const s = H.get(); s.mode = v; H.set(s); job = null; if (state === 'run') { if (v === 'entregas') newJob(); else say('Paseo libre: andá por donde quieras'); } }),
       btn('Cambiar zona', () => menu()),
-      btn('Volver a la calle', () => { if (state === 'run') resetToRoad(); })
+      btn('Volver a la calle', () => { if (state === 'run') resetToRoad(); }),
+      (() => { const b = btn(sndOn ? '🔊 Sonido' : '🔇 Sin sonido', () => { SND.init(); SND.on(!sndOn); b.textContent = sndOn ? '🔊 Sonido' : '🔇 Sin sonido'; const st = H.get(); st.snd = sndOn; H.set(st); }); return b; })()
     ];
     requestAnimationFrame(async () => {
       fit();
@@ -1371,7 +1481,7 @@
     return {
       el: root, tools, key,
       setSkin: (id) => { if (me) me.c = SKIN[id] || me.c; },
-      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · R volvés a la calle · P pausa. Podés ir por el borde de la vereda, más despacio. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
+      help: '↑ acelerás · ↓ frenás (y marcha atrás) · ← → doblás · Espacio freno de mano · Q/E guiño izquierdo/derecho · B balizas · L luces altas · N sirena (patrullero) · H bocina · R volvés a la calle · P pausa. Podés ir por el borde de la vereda, más despacio. El sentido de cada calle está en el cartel de arriba, en el radar y en los carteles de las esquinas. Con lluvia frena y dobla peor.',
       hide: () => { if (state === 'run') { state = 'pause'; msg.hidden = false; msg.textContent = 'En pausa · P para seguir'; } keys = {}; },
       show: () => {}
     };
