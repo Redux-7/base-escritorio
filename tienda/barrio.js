@@ -12,6 +12,7 @@
   const SKIN = { rojo: '#d3202a', azul: '#1f5fe0', amarillo: '#f2c21b', verde: '#1e9e4a', negro: '#23262d', blanco: '#f2f2f2', naranja: '#ff7a1a' };
   // vehículos que podés manejar: largo, ancho, aceleración, velocidad máxima (m/s), distancia entre ejes, agarre, volante
   const VEH = {
+    formula80: { tank: 6000, n: 'F1 clásico (años 80)', t: 'f1c', len: 4.6, wid: 2.1, acc: 9.5, vmax: 74, wb: 2.9, grip: 14, steer: 0.5 },
     formula: { tank: 5000, n: 'Fórmula 1', t: 'f1', len: 5.6, wid: 2.0, acc: 11, vmax: 80, wb: 3.6, grip: 17, steer: 0.48 },
     auto: { tank: 9000, n: 'Auto', t: 'auto', len: 4.4, wid: 1.9, acc: 4.6, vmax: 36, wb: 2.6, grip: 9.5, steer: 0.62 },
     deportivo: { tank: 6000, n: 'Deportivo', t: 'sport', len: 4.5, wid: 1.95, acc: 7, vmax: 50, wb: 2.6, grip: 11.5, steer: 0.6 },
@@ -883,7 +884,26 @@
       const glass = (pts, light) => { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); const gr = g.createLinearGradient(pts[0][0], 0, pts[2][0], 0); gr.addColorStop(0, light ? '#4a5d74' : '#1d2836'); gr.addColorStop(1, '#0e151f'); g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 0.04; g.stroke(); };
       const lights = (x1, x0, w) => { g.fillStyle = '#fff4cc'; g.fillRect(x1 - 0.12, -w / 2 + 0.12, 0.1, 0.38); g.fillRect(x1 - 0.12, w / 2 - 0.5, 0.1, 0.38); g.fillStyle = '#8a1a1a'; g.fillRect(x0 + 0.02, -w / 2 + 0.12, 0.1, 0.36); g.fillRect(x0 + 0.02, w / 2 - 0.48, 0.1, 0.36); };
       const hl = L / 2, hw = Wd / 2;
-      if (T === 'f1') {
+      if (T === 'f1c') {
+        // fórmula de fines de los 80: trompa larga y finita, sin halo, gomas traseras anchas y alerón trasero grande
+        const tire = (x, y, w2, l2) => { g.fillStyle = '#111'; g.beginPath(); g.roundRect(x - l2 / 2, y - w2 / 2, l2, w2, 0.08); g.fill(); g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(x - l2 / 2 + 0.06, y - 0.03, l2 - 0.12, 0.06); };
+        g.strokeStyle = '#333'; g.lineWidth = 0.05; g.beginPath(); for (const sd of [-1, 1]) { g.moveTo(hl - 0.9, 0.2 * sd); g.lineTo(hl - 0.8, (hw - 0.25) * sd); g.moveTo(-hl + 0.95, 0.4 * sd); g.lineTo(-hl + 0.8, (hw - 0.3) * sd); } g.stroke();
+        for (const sd of [-1, 1]) { tire(hl - 0.8, sd * (hw - 0.24), 0.4, 0.62); tire(-hl + 0.8, sd * (hw - 0.3), 0.56, 0.74); }
+        // alerón delantero chico a los costados de la trompa
+        g.fillStyle = shade(col, -0.2); g.fillRect(hl - 0.42, -hw + 0.32, 0.26, Wd - 0.64); g.fillStyle = '#1a1a1a'; g.fillRect(hl - 0.44, -hw + 0.3, 0.3, 0.07); g.fillRect(hl - 0.44, hw - 0.37, 0.3, 0.07);
+        // carrocería: trompa en punta, pontones largos y tapa de motor que se angosta
+        g.beginPath(); g.moveTo(hl - 0.05, 0); g.lineTo(hl - 0.5, -0.17); g.lineTo(0.55, -0.3); g.lineTo(0.25, -0.68); g.lineTo(-1.1, -0.7); g.lineTo(-1.55, -0.42); g.lineTo(-hl + 0.42, -0.3); g.lineTo(-hl + 0.42, 0.3); g.lineTo(-1.55, 0.42); g.lineTo(-1.1, 0.7); g.lineTo(0.25, 0.68); g.lineTo(0.55, 0.3); g.lineTo(hl - 0.5, 0.17); g.closePath();
+        g.fillStyle = paint(-hl, hl, -0.72, 0.72); g.fill(); g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 0.04; g.stroke();
+        // franja blanca a lo largo (dos colores, como se usaba)
+        g.save(); g.clip(); g.fillStyle = 'rgba(255,255,255,.88)'; g.beginPath(); g.moveTo(hl, -0.05); g.lineTo(0.3, -0.75); g.lineTo(-0.2, -0.75); g.lineTo(hl - 0.6, 0); g.lineTo(-0.2, 0.75); g.lineTo(0.3, 0.75); g.lineTo(hl, 0.05); g.closePath(); g.fill(); g.restore();
+        // cockpit abierto con el casco
+        g.fillStyle = '#0c0d10'; g.beginPath(); g.ellipse(-0.05, 0, 0.42, 0.22, 0, 0, TAU); g.fill();
+        g.fillStyle = '#f2d230'; g.beginPath(); g.arc(-0.12, 0, 0.16, 0, TAU); g.fill(); g.fillStyle = '#2b5fb8'; g.fillRect(-0.06, -0.1, 0.05, 0.2);
+        g.fillStyle = 'rgba(180,200,220,.6)'; g.beginPath(); g.ellipse(0.32, 0, 0.08, 0.2, 0, 0, TAU); g.fill();
+        // toma de aire arriba y alerón trasero ancho
+        g.fillStyle = '#1b1b1b'; g.beginPath(); g.ellipse(-0.55, 0, 0.16, 0.12, 0, 0, TAU); g.fill();
+        g.fillStyle = '#18191d'; g.fillRect(-hl - 0.02, -0.95, 0.48, 1.9); g.fillStyle = shade(col, 0.1); g.fillRect(-hl + 0.06, -0.92, 0.32, 1.84); g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(-hl + 0.14, -0.92, 0.1, 1.84);
+      } else if (T === 'f1') {
         // fórmula: ruedas al aire, alerones adelante y atrás, piloto con casco y halo
         const tire = (x, y) => { g.fillStyle = '#121212'; g.beginPath(); g.roundRect(x - 0.36, y - 0.22, 0.72, 0.44, 0.08); g.fill(); g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x - 0.3, y - 0.03, 0.6, 0.06); };
         g.strokeStyle = '#2b2b2b'; g.lineWidth = 0.06; g.beginPath(); for (const [x, y] of [[hl - 0.8, hw - 0.22], [-hl + 0.9, hw - 0.22]]) for (const sd of [-1, 1]) { g.moveTo(x + 0.15, 0.22 * sd); g.lineTo(x, y * sd); g.moveTo(x - 0.2, 0.25 * sd); g.lineTo(x, y * sd); } g.stroke();
@@ -1469,7 +1489,7 @@
           if (!A) return;
           if (!run || !me) { for (const g of [engG, tireG, rainG, sirenG, hornG, pumpG]) set(g, 0, 0.05); return; }
           const V = me.V, spd = Math.abs(me.vf), span = V.vmax / 5, gear = Math.min(4, Math.floor(spd / span)), frac = (spd - gear * span) / span;
-          const base = me.type === 'f1' ? 92 : me.type === 'moto' ? 70 : me.type === 'bus' || me.type === 'truck' ? 28 : me.type === 'sport' ? 52 : 40;
+          const base = me.type === 'f1c' ? 84 : me.type === 'f1' ? 92 : me.type === 'moto' ? 70 : me.type === 'bus' || me.type === 'truck' ? 28 : me.type === 'sport' ? 52 : 40;
           const rpm = spd < 0.3 ? 0 : 0.25 + frac * 0.75 + (keys.up ? 0.08 : 0), f = base * (1 + rpm * 1.6) * (1 + gear * 0.04);
           eng1.frequency.setTargetAtTime(f, A.currentTime, 0.05); eng2.frequency.setTargetAtTime(f / 2, A.currentTime, 0.05);
           engF.frequency.setTargetAtTime(300 + rpm * 1300 + (keys.up ? 300 : 0), A.currentTime, 0.08);
@@ -1688,10 +1708,10 @@
       const slot = (i) => [-7 - Math.floor(i / 2) * 8, i % 2 ? 1.7 : -1.7];
       const place = (o, i) => { const [P0, ln] = slot(i), [x, y, ux, uy] = pathAt(path, P0); o.x = x - uy * ln; o.y = y + ux * ln; o.a = Math.atan2(uy, ux); return P0; };
       cars = [];
-      const f1 = me.type === 'f1';
+      const f1 = me.type === 'f1' || me.type === 'f1c';
       for (let i = 0; i < n; i++) {
-        const [nm, col, ty0] = RIV[i], ty = f1 ? 'f1' : ty0, V = VEH[f1 ? 'formula' : ty === 'sport' ? 'deportivo' : ty === 'pickup' ? 'camioneta' : 'auto'];
-        const c = { racer: true, name: nm, c: col, type: ty, len: V.len, wid: V.wid, vmax: f1 ? 76 : 38, lat: f1 ? 15 : 7.2, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
+        const [nm, col, ty0] = RIV[i], ty = f1 ? me.type : ty0, V = VEH[f1 ? (me.type === 'f1c' ? 'formula80' : 'formula') : ty === 'sport' ? 'deportivo' : ty === 'pickup' ? 'camioneta' : 'auto'];
+        const c = { racer: true, name: nm, c: col, type: ty, len: V.len, wid: V.wid, vmax: f1 ? (me.type === 'f1c' ? 70 : 76) : 38, lat: f1 ? (me.type === 'f1c' ? 13 : 15) : 7.2, v: 0, lane: slot(i)[1], hits: [], skill: k * (0.95 + Math.random() * 0.08) * (ty === 'sport' ? 1.04 : ty === 'pickup' ? 0.96 : 1), brake: false };
         c.P = place(c, i); cars.push(c);
       }
       const P0 = place(me, n); me.vf = me.vr = 0; me.fuel = 1; me.steer = 0; camX = me.x; camY = me.y;
