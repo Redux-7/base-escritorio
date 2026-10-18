@@ -1,7 +1,7 @@
 {
-  "version": "2.35.0",
-  "file": "versiones/base-app-2.35.0.zip",
-  "sha256": "806d4f9dc76950fe803415b7af119d18d2ddfe6fa4f2c91a9998ad0c86200616",
-  "size": 508188,
-  "notes": "Novedades 2.35\n- Buscador que aprende lo que más usás (agenda, mails, Ajustes, volumen, apagar en un rato).\n- Papelera: lo borrado se puede recuperar durante 30 días.\n- Ajustes con buscador.\n- Rutinas por horario, atajos de teclado propios y esquinas activas.\n- Salud de la compu y copia automática de carpetas (Google Drive o disco).\n- Modo liviano y menos consumo cuando no usás Base."
+  "version": "2.36.0",
+  "file": "versiones/base-app-2.36.0.zip",
+  "sha256": "ca93138c9db1ee572f3e48c3eb75014590f9201f4f7fca36cea0ea2653ac65dc",
+  "size": 512357,
+  "notes": "Novedades 2.36\n- Copia directa a tu Google Drive, todos los días: tus datos de Base y las carpetas que elijas.\n- Se activa en Ajustes > Compu y copias > \"Subir a mi Google Drive\" (pide volver a vincular la cuenta una vez)."
 }
