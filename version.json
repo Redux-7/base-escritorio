@@ -1,7 +1,7 @@
 {
-  "version": "2.40.0",
-  "file": "versiones/base-app-2.40.0.zip",
-  "sha256": "2dd97482c863c2cc8273638d4dcc5fe12869d437913df2180c5f8a148cb71545",
-  "size": 521130,
-  "notes": "Novedades 2.40\n- Joystick: el botón de los dos cuadraditos (View) lo puede usar cada juego; en \"Manejá por tu barrio\" abre el Menú y pausa."
+  "version": "2.41.0",
+  "file": "versiones/base-app-2.41.0.zip",
+  "sha256": "5473b50e872839990c35f656fc240b7a0fd2676a9385822ab661cfe284f5a7c0",
+  "size": 523540,
+  "notes": "Novedades 2.41\n- Modo celular para el panel: una columna, más compacto, la barra de la compu abajo. Se elige solo (o a mano en Ajustes del panel)."
 }
