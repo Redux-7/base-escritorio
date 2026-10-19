@@ -1,7 +1,7 @@
 {
-  "version": "2.39.0",
-  "file": "versiones/base-app-2.39.0.zip",
-  "sha256": "904b4f58db21daba159b80f1bb0464c0a314e68079f0e311253eb4c0d7aa3daf",
-  "size": 521084,
-  "notes": "Novedades 2.39\n- Botón \"✕ Cerrar\" en todos los mini juegos.\n- Esc en pantalla completa sólo sale de la pantalla completa."
+  "version": "2.40.0",
+  "file": "versiones/base-app-2.40.0.zip",
+  "sha256": "2dd97482c863c2cc8273638d4dcc5fe12869d437913df2180c5f8a148cb71545",
+  "size": 521130,
+  "notes": "Novedades 2.40\n- Joystick: el botón de los dos cuadraditos (View) lo puede usar cada juego; en \"Manejá por tu barrio\" abre el Menú y pausa."
 }
