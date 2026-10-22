@@ -159,14 +159,14 @@
     {
       "id": "canerias",
       "n": "Cañerías",
-      "d": "Girá los caños para que el agua del tanque llegue a todas las casas.",
+      "d": "Girá los caños para que el agua llegue a todas las casas. Variantes: con la vuelta, piedras, dos tanques, niebla y pocos giros.",
       "c": "#2f9bff",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1c2b36\"/><path d=\"M32 32V8M32 32H56M32 32V56M8 20H20V32H32\" stroke=\"#2f9bff\" stroke-width=\"7\" stroke-linecap=\"round\" fill=\"none\"/><path d=\"M8 44H20\" stroke=\"#8a96a3\" stroke-width=\"7\" stroke-linecap=\"round\"/><circle cx=\"32\" cy=\"32\" r=\"8\" fill=\"#2f9bff\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M50 50l6-5 6 5v7H50z\" fill=\"#ffd166\"/></svg>",
       "tipo": "Puzzles",
-      "v": "2",
+      "v": "3",
       "file": "canerias.js",
-      "size": 9297,
-      "sha256": "4d5c5601f72a2a25e1544721fcca218c2b05b89662dcf4fba70a234580d5d35d"
+      "size": 14398,
+      "sha256": "7c298872a57f00a6bd4496a9296d92b52980c25a787fa0199b073a61502ac869"
     },
     {
       "id": "nonograma",

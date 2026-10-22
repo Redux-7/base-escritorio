@@ -1,7 +1,7 @@
 {
-  "version": "2.42.0",
-  "file": "versiones/base-app-2.42.0.zip",
-  "sha256": "1bd4fb07b31efd5660499db4828023cf6fd809a6b146ba5154bcfce6d1fbab29",
-  "size": 524192,
-  "notes": "Novedades 2.42\n- Actualizar es más seguro: Base sólo se cierra cuando el actualizador ya arrancó; si Windows lo bloquea, te avisa en vez de cerrarse.\n- \"Actualizar Base.cmd\" para actualizar a mano las compus que no pueden solas."
+  "version": "2.43.0",
+  "file": "versiones/base-app-2.43.0.zip",
+  "sha256": "5feac880763a4c16168f9d9c41389f7d7a27048b4e7de5c478a25e39c2bc2198",
+  "size": 524725,
+  "notes": "Novedades 2.43\n- La hora aparece en la barra de arriba cuando hay ventanas abiertas.\n- Los botones de Windows arrancan desplegados; se pliegan con la flechita."
 }
