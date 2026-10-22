@@ -1,7 +1,7 @@
 {
-  "version": "2.43.0",
-  "file": "versiones/base-app-2.43.0.zip",
-  "sha256": "5feac880763a4c16168f9d9c41389f7d7a27048b4e7de5c478a25e39c2bc2198",
-  "size": 524725,
-  "notes": "Novedades 2.43\n- La hora aparece en la barra de arriba cuando hay ventanas abiertas.\n- Los botones de Windows arrancan desplegados; se pliegan con la flechita."
+  "version": "2.44.0",
+  "file": "versiones/base-app-2.44.0.zip",
+  "sha256": "446e51f556362291a6708314edbc968c8c249a189f282f3b7aa09354d8ec2c06",
+  "size": 528438,
+  "notes": "Novedades 2.44\n- Escritorio minimalista con widgets (Ajustes > Escritorio > Estilo): barra abajo como Windows 11, íconos sobre el fondo y widgets en una columna a la derecha."
 }
