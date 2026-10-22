@@ -1,7 +1,7 @@
 {
-  "version": "2.49.0",
-  "file": "versiones/base-app-2.49.0.zip",
-  "sha256": "95e33b5c7903b98800851a589f30dceacdb353ecba1a368e1cf364cd830f34d8",
-  "size": 552543,
-  "notes": "Tarjetas de la derecha arregladas con Vidrio brillante, colores principales pensados para cada estilo, Clásico rehecho y tres estilos nuevos: Burbuja, Tonal y Suave."
+  "version": "2.50.0",
+  "file": "versiones/base-app-2.50.0.zip",
+  "sha256": "f309c0375e4331c34b511f367f9cb2d166c656d7032f39b5f26668a4e0af1439",
+  "size": 556175,
+  "notes": "Color secundario para botones y detalles, estilos nuevos Setentas y Grafito, y arreglo de la barra de Windows que aparecía y desaparecía con el escritorio minimalista."
 }
