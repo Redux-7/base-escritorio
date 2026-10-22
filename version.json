@@ -1,7 +1,7 @@
 {
-  "version": "2.45.0",
-  "file": "versiones/base-app-2.45.0.zip",
-  "sha256": "8cb70210869774b009c9aded1cd9d5e901261c410ac2fbe1d025e0e3c7ac9d76",
-  "size": 542547,
-  "notes": "Novedades 2.45\n- Archivos es una ventana: mover, agrandar, minimizar, maximizar y acomodar a los costados, con efecto gelatina.\n- Más funciones en Archivos: pestañas, escribir la ruta, propiedades, zip, abrir con, buscar en subcarpetas.\n- 7 estilos para todo Base (Ajustes > Colores y fondo).\n- Más lugar para las ventanas en la barra del escritorio minimalista."
+  "version": "2.46.0",
+  "file": "versiones/base-app-2.46.0.zip",
+  "sha256": "a5cd3210c206e3627728e96ae1d65df123d0272ba5afda046ec7740c9b3c284a",
+  "size": 543781,
+  "notes": "Novedades 2.46\n- Los programas que piden atención brillan en naranja en la barra de ventanas de Base.\n- Escritorio minimalista: los avisos flotantes se acomodan a la barra de abajo."
 }
