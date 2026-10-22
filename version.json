@@ -1,7 +1,7 @@
 {
-  "version": "2.48.1",
-  "file": "versiones/base-app-2.48.1.zip",
-  "sha256": "c248af886804ffd163e019528d6cbd9c4803197919bd61623529ddffc48adbf1",
-  "size": 548184,
-  "notes": "Ajustes ya no queda tapado por la barra de abajo en el escritorio minimalista, el modo liviano ya no desenfoca todo, y en Redes el botón Personalizar tarjetas se ve mejor."
+  "version": "2.48.2",
+  "file": "versiones/base-app-2.48.2.zip",
+  "sha256": "4347bc835e62b5e5b45ccbd7d96dc441cf5e5daa2d9c378de881b0905a3f9cc0",
+  "size": 549769,
+  "notes": "Arreglos para el escritorio minimalista: las ventanas maximizadas ya no tiemblan en pantallas con escala, y las ventanas abiertas vuelven a aparecer en la barra (el ayudante arranca más rápido y se reintenta solo)."
 }
