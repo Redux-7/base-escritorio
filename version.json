@@ -1,7 +1,7 @@
 {
-  "version": "2.47.0",
-  "file": "versiones/base-app-2.47.0.zip",
-  "sha256": "cc925b8d220071a404bdf19af2a98a0592b61657c8775f49b3fef0dd4501f9b7",
-  "size": 545638,
-  "notes": "Novedades 2.47\n- Escritorio minimalista: las ventanas usan toda la pantalla y dejan la barra de abajo a la vista.\n- Estilos pulidos (Clásico sin azul, Papel y Vidrio con tu color, Plano con bordes suaves) y un puntero para cada uno."
+  "version": "2.48.0",
+  "file": "versiones/base-app-2.48.0.zip",
+  "sha256": "b79f594ded5de420ef886d0da0661125fe3c77870536cf06f6b513272fa39516",
+  "size": 547895,
+  "notes": "Tablero Redes: podés sacar, volver a poner, ordenar y cambiar el ancho de las tarjetas (WhatsApp, Correo y Tus redes). WhatsApp arranca más ancho para que se lea mejor."
 }
