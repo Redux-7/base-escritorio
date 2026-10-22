@@ -1,7 +1,7 @@
 {
-  "version": "2.48.0",
-  "file": "versiones/base-app-2.48.0.zip",
-  "sha256": "b79f594ded5de420ef886d0da0661125fe3c77870536cf06f6b513272fa39516",
-  "size": 547895,
-  "notes": "Tablero Redes: podés sacar, volver a poner, ordenar y cambiar el ancho de las tarjetas (WhatsApp, Correo y Tus redes). WhatsApp arranca más ancho para que se lea mejor."
+  "version": "2.48.1",
+  "file": "versiones/base-app-2.48.1.zip",
+  "sha256": "c248af886804ffd163e019528d6cbd9c4803197919bd61623529ddffc48adbf1",
+  "size": 548184,
+  "notes": "Ajustes ya no queda tapado por la barra de abajo en el escritorio minimalista, el modo liviano ya no desenfoca todo, y en Redes el botón Personalizar tarjetas se ve mejor."
 }
