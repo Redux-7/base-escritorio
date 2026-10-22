@@ -1,7 +1,7 @@
 {
-  "version": "2.44.0",
-  "file": "versiones/base-app-2.44.0.zip",
-  "sha256": "446e51f556362291a6708314edbc968c8c249a189f282f3b7aa09354d8ec2c06",
-  "size": 528438,
-  "notes": "Novedades 2.44\n- Escritorio minimalista con widgets (Ajustes > Escritorio > Estilo): barra abajo como Windows 11, íconos sobre el fondo y widgets en una columna a la derecha."
+  "version": "2.44.1",
+  "file": "versiones/base-app-2.44.1.zip",
+  "sha256": "6f8a478e83c105e6f104c5092053ed9c8243fc966740c2c960998c1d04372688",
+  "size": 528747,
+  "notes": "Novedades 2.44.1\n- Escritorio minimalista: los tableros de la barra ya no se pisan con los botones."
 }
