@@ -1,7 +1,7 @@
 {
-  "version": "2.48.2",
-  "file": "versiones/base-app-2.48.2.zip",
-  "sha256": "4347bc835e62b5e5b45ccbd7d96dc441cf5e5daa2d9c378de881b0905a3f9cc0",
-  "size": 549769,
-  "notes": "Arreglos para el escritorio minimalista: las ventanas maximizadas ya no tiemblan en pantallas con escala, y las ventanas abiertas vuelven a aparecer en la barra (el ayudante arranca más rápido y se reintenta solo)."
+  "version": "2.49.0",
+  "file": "versiones/base-app-2.49.0.zip",
+  "sha256": "95e33b5c7903b98800851a589f30dceacdb353ecba1a368e1cf364cd830f34d8",
+  "size": 552543,
+  "notes": "Tarjetas de la derecha arregladas con Vidrio brillante, colores principales pensados para cada estilo, Clásico rehecho y tres estilos nuevos: Burbuja, Tonal y Suave."
 }
