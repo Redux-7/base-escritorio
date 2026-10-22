@@ -1,7 +1,7 @@
 {
-  "version": "2.44.1",
-  "file": "versiones/base-app-2.44.1.zip",
-  "sha256": "6f8a478e83c105e6f104c5092053ed9c8243fc966740c2c960998c1d04372688",
-  "size": 528747,
-  "notes": "Novedades 2.44.1\n- Escritorio minimalista: los tableros de la barra ya no se pisan con los botones."
+  "version": "2.45.0",
+  "file": "versiones/base-app-2.45.0.zip",
+  "sha256": "8cb70210869774b009c9aded1cd9d5e901261c410ac2fbe1d025e0e3c7ac9d76",
+  "size": 542547,
+  "notes": "Novedades 2.45\n- Archivos es una ventana: mover, agrandar, minimizar, maximizar y acomodar a los costados, con efecto gelatina.\n- Más funciones en Archivos: pestañas, escribir la ruta, propiedades, zip, abrir con, buscar en subcarpetas.\n- 7 estilos para todo Base (Ajustes > Colores y fondo).\n- Más lugar para las ventanas en la barra del escritorio minimalista."
 }
