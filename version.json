@@ -1,7 +1,7 @@
 {
-  "version": "2.46.0",
-  "file": "versiones/base-app-2.46.0.zip",
-  "sha256": "a5cd3210c206e3627728e96ae1d65df123d0272ba5afda046ec7740c9b3c284a",
-  "size": 543781,
-  "notes": "Novedades 2.46\n- Los programas que piden atención brillan en naranja en la barra de ventanas de Base.\n- Escritorio minimalista: los avisos flotantes se acomodan a la barra de abajo."
+  "version": "2.47.0",
+  "file": "versiones/base-app-2.47.0.zip",
+  "sha256": "cc925b8d220071a404bdf19af2a98a0592b61657c8775f49b3fef0dd4501f9b7",
+  "size": 545638,
+  "notes": "Novedades 2.47\n- Escritorio minimalista: las ventanas usan toda la pantalla y dejan la barra de abajo a la vista.\n- Estilos pulidos (Clásico sin azul, Papel y Vidrio con tu color, Plano con bordes suaves) y un puntero para cada uno."
 }
