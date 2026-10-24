@@ -1,6 +1,78 @@
 {
   "juegos": [
     {
+      "id": "truco",
+      "n": "Truco",
+      "d": "Truco argentino mano a mano contra la compu: envido, truco, retruco y vale cuatro.",
+      "c": "#2a5aa8",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#5e3b1f\"/><g transform=\"rotate(-14 22 34)\"><rect x=\"9\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><path d=\"M21 20l2.6 18h-5.2z\" fill=\"#4c80d0\" stroke=\"#1d3c70\"/><rect x=\"15.5\" y=\"37\" width=\"11\" height=\"2.4\" fill=\"#d9a640\"/></g><g transform=\"rotate(12 42 34)\"><rect x=\"30\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><path d=\"M39.8 44c-1.2-6-2.2-12-1.4-17 .6-2.8 6-2.8 6.6 0 .8 5-.2 11-1.4 17z\" fill=\"#5d9a3f\" stroke=\"#2b5220\"/></g><path d=\"M6 58h52\" stroke=\"#f0d9a8\" stroke-width=\"2\"/></svg>",
+      "tipo": "Cartas",
+      "v": "1",
+      "file": "truco.js",
+      "size": 29260,
+      "sha256": "c922416b02d1b508f61697afad58bb33be449d0683f0acc84b468084ea26c314"
+    },
+    {
+      "id": "chinchon",
+      "n": "Chinchón",
+      "d": "Armá juegos y escaleras con naipes españoles y cortá antes que la compu (de 1 a 3 rivales).",
+      "c": "#b02a20",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1b5232\"/><g transform=\"rotate(-18 20 40)\"><rect x=\"8\" y=\"18\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"19\" y=\"40\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">5</text></g><rect x=\"21\" y=\"14\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"32\" y=\"36\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">6</text><g transform=\"rotate(18 44 40)\"><rect x=\"34\" y=\"18\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"45\" y=\"40\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">7</text></g></svg>",
+      "tipo": "Cartas",
+      "v": "1",
+      "file": "chinchon.js",
+      "size": 26555,
+      "sha256": "037d04ad21c4d676c0f559ec78be6f983c5302622b5ec1cbfa5144c066022cd4"
+    },
+    {
+      "id": "escoba",
+      "n": "Escoba de 15",
+      "d": "El clásico de naipes españoles contra la compu: sumá 15 y hacé escobas.",
+      "c": "#2f7d4a",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2f7d4a\"/><g transform=\"rotate(-12 22 34)\"><rect x=\"10\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><circle cx=\"22\" cy=\"32\" r=\"6\" fill=\"#e2b13c\" stroke=\"#8f650f\"/></g><g transform=\"rotate(10 42 34)\"><rect x=\"30\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"42\" y=\"38\" font-size=\"14\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#b02a20\" font-family=\"Georgia,serif\">15</text></g></svg>",
+      "tipo": "Cartas",
+      "v": "1",
+      "file": "escoba.js",
+      "size": 21928,
+      "sha256": "30159f51e5ea8811d6211041c6d364b894736ba2c8f94e4ea5dffd88bfa7b3cf"
+    },
+    {
+      "id": "adivina",
+      "n": "Adiviná quién",
+      "d": "Preguntá por sí o por no y descubrí el personaje secreto de la compu antes que ella el tuyo.",
+      "c": "#2a5aa8",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#b9cdea\"/><rect x=\"8\" y=\"10\" width=\"20\" height=\"24\" rx=\"3\" fill=\"#fff\"/><circle cx=\"18\" cy=\"21\" r=\"6\" fill=\"#f6d3b3\"/><path d=\"M12 19c0-6 12-6 12 0\" fill=\"#7a4a24\"/><rect x=\"36\" y=\"10\" width=\"20\" height=\"24\" rx=\"3\" fill=\"#2a5aa8\"/><text x=\"46\" y=\"27\" font-size=\"14\" font-weight=\"900\" text-anchor=\"middle\" fill=\"#fff\">?</text><rect x=\"8\" y=\"38\" width=\"20\" height=\"20\" rx=\"3\" fill=\"#2a5aa8\"/><rect x=\"36\" y=\"38\" width=\"20\" height=\"20\" rx=\"3\" fill=\"#fff\"/><circle cx=\"46\" cy=\"48\" r=\"5.5\" fill=\"#e9b48a\"/><circle cx=\"43.5\" cy=\"47\" r=\"2.4\" fill=\"none\" stroke=\"#1d2433\"/><circle cx=\"48.5\" cy=\"47\" r=\"2.4\" fill=\"none\" stroke=\"#1d2433\"/></svg>",
+      "tipo": "Mesa",
+      "v": "1",
+      "file": "adivina.js",
+      "size": 19131,
+      "sha256": "d6a5b75023f826ef8037b7e233b5c11152e2d91c21c2aa569bb00acb24765647"
+    },
+    {
+      "id": "ciudad",
+      "n": "Gran Ciudad",
+      "d": "Comprá barrios, construí casas y cobrá alquileres. Contra 1 a 3 compus.",
+      "c": "#1f3b2c",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1f3b2c\"/><rect x=\"6\" y=\"6\" width=\"52\" height=\"52\" rx=\"3\" fill=\"#f4f0e2\"/><rect x=\"16\" y=\"16\" width=\"32\" height=\"32\" fill=\"#cfe3c7\"/><rect x=\"6\" y=\"6\" width=\"10\" height=\"4\" fill=\"#8b5a2b\"/><rect x=\"48\" y=\"6\" width=\"10\" height=\"4\" fill=\"#2c5fb8\"/><rect x=\"6\" y=\"54\" width=\"10\" height=\"4\" fill=\"#e74c3c\"/><rect x=\"48\" y=\"54\" width=\"10\" height=\"4\" fill=\"#27ae60\"/><path d=\"M24 40V30l6-5 6 5v10z\" fill=\"#2e8b57\"/><rect x=\"38\" y=\"30\" width=\"6\" height=\"10\" fill=\"#c0392b\"/><circle cx=\"20\" cy=\"22\" r=\"3\" fill=\"#e8a10c\" stroke=\"#fff\"/></svg>",
+      "tipo": "Mesa",
+      "v": "1",
+      "file": "ciudad.js",
+      "size": 27838,
+      "sha256": "12a0e6c9008317967ec5ebbf8f474bfe6b1efe061679bb434d9ddfa2ed5712e3"
+    },
+    {
+      "id": "damas",
+      "n": "Damas",
+      "d": "El clásico de fichas contra la compu, con coronación y damas que vuelan.",
+      "c": "#6b4226",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#6b4226\"/><rect x=\"8\" y=\"8\" width=\"48\" height=\"48\" fill=\"#f0d9b5\"/><path d=\"M8 8h12v12H8zM32 8h12v12H32zM20 20h12v12H20zM44 20h12v12H44zM8 32h12v12H8zM32 32h12v12H32zM20 44h12v12H20zM44 44h12v12H44z\" fill=\"#b58863\"/><circle cx=\"26\" cy=\"26\" r=\"5\" fill=\"#2b2b2b\"/><circle cx=\"38\" cy=\"38\" r=\"5\" fill=\"#f7f2e8\" stroke=\"#a99f8c\"/><circle cx=\"14\" cy=\"50\" r=\"5\" fill=\"#f7f2e8\" stroke=\"#a99f8c\"/></svg>",
+      "tipo": "Mesa",
+      "v": "1",
+      "file": "damas.js",
+      "size": 11656,
+      "sha256": "53699e9449ae0ee392cff7bce5908dc8fc33fc92dce21660abfff26016c85f09"
+    },
+    {
       "id": "rally",
       "n": "Rally",
       "d": "Carreras vistas desde arriba: 3 vueltas contra la compu, con 4 vehículos para elegir.",
