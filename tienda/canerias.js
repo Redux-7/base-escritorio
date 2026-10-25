@@ -29,6 +29,24 @@
 .cn-c.fog svg{opacity:0}
 [data-skin="agua"] .cn-board{--cn-bg:#1c2b36;--cn-cell:#24394a;--cn-dry:#8a96a3;--cn-dry2:#6d7884;--cn-wet:#2f9bff;--cn-wet2:#9ad2ff;--cn-house:#c9b79c;--cn-house-on:#ffd166}
 [data-skin="cobre"] .cn-board{--cn-bg:#2b1f17;--cn-cell:#3a2a1f;--cn-dry:#9b6a43;--cn-dry2:#7a5232;--cn-wet:#3fd0c9;--cn-wet2:#b5fffa;--cn-house:#bba489;--cn-house-on:#ffe08a}
+[data-skin="ciudad"] .cn-board{--cn-bg:#2f5a24;--cn-cell:#76ad57;--cn-dry:#8b9099;--cn-dry2:#f2f2f2;--cn-wet:#3b404a;--cn-wet2:#ffd34d;--cn-house:#d9cfc0;--cn-house-on:#ffd166}
+.cn-c .ac,.cn-c .sw,.cn-c .hubq{display:none}
+[data-skin="ciudad"] .cn-c .aw{display:none}
+[data-skin="ciudad"] .cn-c .ac,[data-skin="ciudad"] .cn-c .sw,[data-skin="ciudad"] .cn-c .hubq{display:inline}
+[data-skin="ciudad"] .cn-c .hub{display:none}
+[data-skin="ciudad"] .cn-c{border-radius:0}
+[data-skin="ciudad"] .cn-board{gap:0;padding:10px}
+[data-skin="ciudad"] .cn-c .sw{stroke:#d8d3c8;stroke-width:46;fill:none}
+[data-skin="ciudad"] .cn-c .p{stroke-width:36;stroke-linecap:butt}
+[data-skin="ciudad"] .cn-c .pi{stroke-width:3.5;stroke-dasharray:9 8;stroke-linecap:butt}
+[data-skin="ciudad"] .cn-c .hubq{fill:var(--cn-dry)}
+[data-skin="ciudad"] .cn-c.wet .hubq{fill:var(--cn-wet)}
+[data-skin="ciudad"] .cn-c.wet.w2 .p{stroke:var(--cn-wet)}[data-skin="ciudad"] .cn-c.wet.w2 .pi{stroke:#ffb347}
+[data-skin="ciudad"] .cn-c .bld{fill:#c9c2b6;stroke:#6b665e;stroke-width:2}
+[data-skin="ciudad"] .cn-c.wet .bld{fill:#efe6d2}
+[data-skin="ciudad"] .cn-c .win{fill:#4a5260}
+[data-skin="ciudad"] .cn-c.wet .win{fill:#ffd34d}
+[data-skin="ciudad"] .cn-c.stone{background:#5f9446}
 [data-skin="neon"] .cn-board{--cn-bg:#08070f;--cn-cell:#14112a;--cn-dry:#3b3560;--cn-dry2:#2a2648;--cn-wet:#39ff9e;--cn-wet2:#d6ffe9;--cn-house:#5b5490;--cn-house-on:#39ff9e}
 `;
   const SIZES = { 5: '5×5', 7: '7×7', 9: '9×9', 11: '11×11' };
@@ -100,14 +118,14 @@
       board.style.setProperty('--s', Math.max(26, Math.floor(Math.min(W, Hh) / n) - 2) + 'px');
     }
     function cellSvg(i) {
-      if (rocks.has(i)) return '<svg viewBox="0 0 100 100"><path class="rock" d="M22 70 30 38l22-14 24 10 8 28-14 16H34z"/><path class="rock2" d="M30 38l22-14 24 10-20 8z"/></svg>';
+      if (rocks.has(i)) return '<svg viewBox="0 0 100 100"><g class="aw"><path class="rock" d="M22 70 30 38l22-14 24 10 8 28-14 16H34z"/><path class="rock2" d="M30 38l22-14 24 10-20 8z"/></g><g class="ac"><rect x="30" y="58" width="6" height="16" fill="#6b4423"/><circle cx="33" cy="48" r="16" fill="#2f6b2a"/><circle cx="28" cy="43" r="7" fill="#3f8a38"/><rect x="62" y="64" width="5" height="12" fill="#6b4423"/><circle cx="64.5" cy="57" r="12" fill="#3a7a32"/><circle cx="61" cy="53" r="5" fill="#4f9a45"/></g></svg>';
       // el dibujo es el del caño "sin girar"; se gira con CSS según los toques
       const m = sol[i], deg = [1, 2, 4, 8].filter(x => m & x);
-      let body = deg.map(b => `<path class="p" d="${ARM[b]}"/>`).join('') + deg.map(b => `<path class="pi" d="${ARM[b]}"/>`).join('');
+      let body = deg.map(b => `<path class="sw" d="${ARM[b]}"/>`).join('') + (deg.length > 1 && m !== 5 && m !== 10 ? '<rect class="sw" x="27" y="27" width="46" height="46" style="fill:#d8d3c8;stroke:none"/>' : '') + deg.map(b => `<path class="p" d="${ARM[b]}"/>`).join('') + (deg.length > 1 && m !== 5 && m !== 10 ? '<rect class="hubq" x="32" y="32" width="36" height="36"/>' : '') + deg.map(b => `<path class="pi" d="${ARM[b]}"/>`).join('');
       let top = '';
       const si = srcs.indexOf(i);
-      if (si >= 0) top = `<circle cx="50" cy="50" r="30" fill="${si ? '#ff8a3d' : '#2f9bff'}" stroke="#fff" stroke-width="5"/><path d="M50 30c8 10 13 16 13 23a13 13 0 0 1-26 0c0-7 5-13 13-23z" fill="#fff"/>`;
-      else if (deg.length === 1) top = '<path class="house" d="M28 54 50 33l22 21v22H28z"/><rect x="45" y="61" width="10" height="15" fill="rgba(0,0,0,.35)"/>';
+      if (si >= 0) top = `<g class="aw"><circle cx="50" cy="50" r="30" fill="${si ? '#ff8a3d' : '#2f9bff'}" stroke="#fff" stroke-width="5"/><path d="M50 30c8 10 13 16 13 23a13 13 0 0 1-26 0c0-7 5-13 13-23z" fill="#fff"/></g><g class="ac"><circle cx="50" cy="50" r="31" fill="#d8d3c8"/><circle cx="50" cy="50" r="25" fill="${si ? '#e08a3a' : '#5f9e45'}" stroke="#fff" stroke-width="3"/><path d="M46 70 48 30 50 22 52 30 54 70Z" fill="#fbfbf6" stroke="#8a8a8a" stroke-width="1.5"/><path d="M40 70H60" stroke="#8a8a8a" stroke-width="3"/></g>`;
+      else if (deg.length === 1) top = '<g class="aw"><path class="house" d="M28 54 50 33l22 21v22H28z"/><rect x="45" y="61" width="10" height="15" fill="rgba(0,0,0,.35)"/></g><g class="ac"><rect class="bld" x="27" y="26" width="46" height="50" rx="3"/><rect x="25" y="22" width="50" height="7" rx="2" fill="#8a3b2a"/>' + [33, 46, 59].flatMap(x => [36, 49].map(y => `<rect class="win" x="${x}" y="${y}" width="8" height="8" rx="1"/>`)).join('') + '<rect x="45" y="62" width="10" height="14" fill="#5a3a20"/></g>';
       else body += '<circle class="hub" cx="50" cy="50" r="11"/>';
       return `<svg viewBox="0 0 100 100"><g class="r">${body}</g>${top}</svg>`;
     }
@@ -165,11 +183,11 @@
       pick('Tamaño', Object.entries(SIZES), String(n), (v) => { n = +v; const s = H.get(); s.n = n; H.set(s); newGame(); }), btn('Nuevo', () => newGame())];
     root.__cn = { solve: () => { for (let p = 0; p < n * n && !done; p++) for (let i = 0; i < n * n && !done; i++) { if (rocks.has(i) || cur[i] === sol[i]) continue; let x = cur[i], k = 0; while (x !== sol[i] && k < 4) { x = rot(x); k++; } if (k === 3) spin(i, -1); else for (let q = 0; q < k; q++) spin(i, 1); } }, info: () => ({ vr, n, limit, moves, rocks: rocks.size, srcs: srcs.length, fog: cells.filter(e => e.classList.contains('fog')).length, done }) };
     requestAnimationFrame(() => newGame());
-    return { el: root, tools, setSkin: () => {}, help: 'Tocá un caño para girarlo (clic derecho lo gira para el otro lado). Conectá todos los caños para que el agua llegue a todas las casas. En Variante: Con la vuelta (los bordes se unen), Con piedras, Dos tanques, Niebla (sólo ves cerca del agua) y Pocos giros (giros contados).', hide: () => t.stop(), show: () => { if (!done && moves) t.start(); } };
+    return { el: root, tools, setSkin: () => {}, help: 'Tocá un caño para girarlo (clic derecho lo gira para el otro lado). Conectá todos los caños para que el agua llegue a todas las casas (con el tema Ciudad, son calles que tienen que llegar a todos los edificios). En Variante: Con la vuelta (los bordes se unen), Con piedras, Dos tanques, Niebla (sólo ves cerca del agua) y Pocos giros (giros contados).', hide: () => t.stop(), show: () => { if (!done && moves) t.start(); } };
   }
 
   BM.register({ id: 'canerias', n: 'Cañerías', d: 'Girá los caños para que el agua llegue a todas las casas. Variantes: con la vuelta, piedras, dos tanques, niebla y pocos giros.', c: '#2f9bff', create: canerias, skinLabel: 'Caños',
-    skins: [['agua', 'Agua', '#2f9bff'], ['cobre', 'Cobre', '#9b6a43'], ['neon', 'Neón', '#39ff9e']],
+    skins: [['agua', 'Agua', '#2f9bff'], ['cobre', 'Cobre', '#9b6a43'], ['neon', 'Neón', '#39ff9e'], ['ciudad', 'Ciudad (calles)', '#76ad57']],
     art: '<svg viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#1c2b36"/><path d="M32 32V8M32 32H56M32 32V56M8 20H20V32H32" stroke="#2f9bff" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M8 44H20" stroke="#8a96a3" stroke-width="7" stroke-linecap="round"/><circle cx="32" cy="32" r="8" fill="#2f9bff" stroke="#fff" stroke-width="2"/><path d="M50 50l6-5 6 5v7H50z" fill="#ffd166"/></svg>',
     best: (s) => s.wins ? `${s.wins} resueltos${s.best7 ? ` · 7×7 en ${fmtTime(s.best7)}` : ''}` : 'Nunca jugaste' });
 })();

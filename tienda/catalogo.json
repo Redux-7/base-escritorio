@@ -7,10 +7,10 @@
       "c": "#2a5aa8",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#5e3b1f\"/><g transform=\"rotate(-14 22 34)\"><rect x=\"9\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><path d=\"M21 20l2.6 18h-5.2z\" fill=\"#4c80d0\" stroke=\"#1d3c70\"/><rect x=\"15.5\" y=\"37\" width=\"11\" height=\"2.4\" fill=\"#d9a640\"/></g><g transform=\"rotate(12 42 34)\"><rect x=\"30\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><path d=\"M39.8 44c-1.2-6-2.2-12-1.4-17 .6-2.8 6-2.8 6.6 0 .8 5-.2 11-1.4 17z\" fill=\"#5d9a3f\" stroke=\"#2b5220\"/></g><path d=\"M6 58h52\" stroke=\"#f0d9a8\" stroke-width=\"2\"/></svg>",
       "tipo": "Cartas",
-      "v": "1",
+      "v": "2",
       "file": "truco.js",
-      "size": 29260,
-      "sha256": "c922416b02d1b508f61697afad58bb33be449d0683f0acc84b468084ea26c314"
+      "size": 37679,
+      "sha256": "ce89978cb3b271ba7891d718df85f91d9f73f3a38a0058b8b9a74541253798c9"
     },
     {
       "id": "chinchon",
@@ -19,10 +19,10 @@
       "c": "#b02a20",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1b5232\"/><g transform=\"rotate(-18 20 40)\"><rect x=\"8\" y=\"18\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"19\" y=\"40\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">5</text></g><rect x=\"21\" y=\"14\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"32\" y=\"36\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">6</text><g transform=\"rotate(18 44 40)\"><rect x=\"34\" y=\"18\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"45\" y=\"40\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">7</text></g></svg>",
       "tipo": "Cartas",
-      "v": "1",
+      "v": "2",
       "file": "chinchon.js",
-      "size": 26555,
-      "sha256": "037d04ad21c4d676c0f559ec78be6f983c5302622b5ec1cbfa5144c066022cd4"
+      "size": 34974,
+      "sha256": "438c3d58bbf6cbab590f97b6dd8beb15b6b40eaa71863dd470f3ab3dfcbd78ba"
     },
     {
       "id": "escoba",
@@ -31,10 +31,10 @@
       "c": "#2f7d4a",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2f7d4a\"/><g transform=\"rotate(-12 22 34)\"><rect x=\"10\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><circle cx=\"22\" cy=\"32\" r=\"6\" fill=\"#e2b13c\" stroke=\"#8f650f\"/></g><g transform=\"rotate(10 42 34)\"><rect x=\"30\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"42\" y=\"38\" font-size=\"14\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#b02a20\" font-family=\"Georgia,serif\">15</text></g></svg>",
       "tipo": "Cartas",
-      "v": "1",
+      "v": "2",
       "file": "escoba.js",
-      "size": 21928,
-      "sha256": "30159f51e5ea8811d6211041c6d364b894736ba2c8f94e4ea5dffd88bfa7b3cf"
+      "size": 31071,
+      "sha256": "f3f720232e18b619128681a36a4597b2616ab85c63e1e4e58d9a415e36c49bad"
     },
     {
       "id": "adivina",
@@ -133,28 +133,40 @@
       "sha256": "a44f059ca847274b74e658f382b21b8fe87357afe6511b96fa08e7ef9c44a620"
     },
     {
+      "id": "crucigrama",
+      "n": "Crucigrama",
+      "d": "El crucigrama de siempre: grilla con números y las definiciones horizontales y verticales al costado.",
+      "c": "#1d2433",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1d2433\"/><g fill=\"#fffdf6\"><rect x=\"8\" y=\"8\" width=\"11\" height=\"11\"/><rect x=\"20\" y=\"8\" width=\"11\" height=\"11\"/><rect x=\"32\" y=\"8\" width=\"11\" height=\"11\"/><rect x=\"20\" y=\"20\" width=\"11\" height=\"11\"/><rect x=\"20\" y=\"32\" width=\"11\" height=\"11\"/><rect x=\"32\" y=\"32\" width=\"11\" height=\"11\"/><rect x=\"44\" y=\"32\" width=\"11\" height=\"11\"/><rect x=\"44\" y=\"20\" width=\"11\" height=\"11\"/><rect x=\"44\" y=\"44\" width=\"11\" height=\"11\"/><rect x=\"8\" y=\"32\" width=\"11\" height=\"11\"/></g><g font-family=\"system-ui\" font-size=\"4.5\" font-weight=\"700\" fill=\"#555\"><text x=\"9\" y=\"12.5\">1</text><text x=\"21\" y=\"12.5\">2</text><text x=\"9\" y=\"36.5\">3</text><text x=\"45\" y=\"24.5\">4</text></g><g font-family=\"system-ui\" font-weight=\"800\" font-size=\"8\" fill=\"#1b2433\" text-anchor=\"middle\"><text x=\"13.5\" y=\"17\">S</text><text x=\"25.5\" y=\"17\">O</text><text x=\"37.5\" y=\"17\">L</text></g></svg>",
+      "tipo": "Letras",
+      "v": "1",
+      "file": "crucigrama.js",
+      "size": 38044,
+      "sha256": "05d6f2daaa639d51ad0eade8624fa5ad20336d947a6ce65c2525409e8c05807e"
+    },
+    {
       "id": "autodefinido",
       "n": "Autodefinido",
       "d": "Crucigrama con las definiciones adentro de la grilla. Uno nuevo cada vez, en tres tamaños.",
       "c": "#2f6fd6",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2b2f38\"/><g><rect x=\"5\" y=\"5\" width=\"17\" height=\"17\" fill=\"#cfe0f2\"/><rect x=\"23\" y=\"5\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"41\" y=\"5\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"5\" y=\"23\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"23\" y=\"23\" width=\"17\" height=\"17\" fill=\"#cfe0f2\"/><rect x=\"41\" y=\"23\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"5\" y=\"41\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"23\" y=\"41\" width=\"17\" height=\"17\" fill=\"#fbf8f0\"/><rect x=\"41\" y=\"41\" width=\"17\" height=\"17\" fill=\"#3b404b\"/></g><g fill=\"#1d3350\" font-family=\"system-ui\" font-size=\"4.3\" font-weight=\"700\"><text x=\"7\" y=\"12\">Astro</text><text x=\"7\" y=\"17\">rey ▸</text><text x=\"25\" y=\"30\">Mar</text><text x=\"25\" y=\"35\">...▾</text></g><g font-family=\"system-ui\" font-weight=\"800\" font-size=\"12\" fill=\"#1b2433\" text-anchor=\"middle\"><text x=\"31.5\" y=\"18\">S</text><text x=\"49.5\" y=\"18\">O</text><text x=\"49.5\" y=\"36\">L</text></g></svg>",
       "tipo": "Letras",
-      "v": "3",
+      "v": "4",
       "file": "autodefinido.js",
-      "size": 29607,
-      "sha256": "cc30a75420ee77482296fe1f792bedcb24aecf70df42fe809e5955e94b580ad8"
+      "size": 38886,
+      "sha256": "a01fae06d8f664be4c60a13db6130a1fe237b3c2b4e934aca0c58b0df1a15bac"
     },
     {
       "id": "sopa",
       "n": "Sopa de letras",
-      "d": "Encontrá las palabras escondidas. Elegí tema, tamaño y direcciones, o usá las tuyas.",
+      "d": "Encontrá las palabras escondidas. Con modo libre en zigzag donde todas las letras son de alguna palabra.",
       "c": "#c0743a",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#f6f1e4\"/><g font-family=\"system-ui,sans-serif\" font-weight=\"800\" font-size=\"11\" fill=\"#3a3540\" text-anchor=\"middle\"><text x=\"12\" y=\"17\">S</text><text x=\"25\" y=\"17\">O</text><text x=\"38\" y=\"17\">P</text><text x=\"51\" y=\"17\">A</text><text x=\"12\" y=\"31\">K</text><text x=\"25\" y=\"31\">L</text><text x=\"38\" y=\"31\">E</text><text x=\"51\" y=\"31\">T</text><text x=\"12\" y=\"45\">R</text><text x=\"25\" y=\"45\">A</text><text x=\"38\" y=\"45\">S</text><text x=\"51\" y=\"45\">M</text><text x=\"12\" y=\"59\">U</text><text x=\"25\" y=\"59\">Z</text><text x=\"38\" y=\"59\">O</text><text x=\"51\" y=\"59\">E</text></g><rect x=\"4\" y=\"7\" width=\"54\" height=\"13\" rx=\"6.5\" fill=\"#e8743a\" opacity=\".45\"/><line x1=\"12\" y1=\"27\" x2=\"38\" y2=\"55\" stroke=\"#4c8dff\" stroke-width=\"10\" stroke-linecap=\"round\" opacity=\".35\"/></svg>",
       "tipo": "Letras",
-      "v": "3",
+      "v": "4",
       "file": "sopa.js",
-      "size": 20742,
-      "sha256": "38f1ecd19fed7c6c1b1199932939faa3f80e17a18f42b58a0d4ae45a2a32300d"
+      "size": 27263,
+      "sha256": "ba9f56e58394f0acfc4b630e7e232b6ebac34792d21c4d76a37d417685f76b94"
     },
     {
       "id": "palabrero",
@@ -231,14 +243,14 @@
     {
       "id": "canerias",
       "n": "Cañerías",
-      "d": "Girá los caños para que el agua llegue a todas las casas. Variantes: con la vuelta, piedras, dos tanques, niebla y pocos giros.",
+      "d": "Girá los caños para que el agua llegue a todas las casas (o las calles a todos los edificios, con el tema Ciudad). Con variantes.",
       "c": "#2f9bff",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1c2b36\"/><path d=\"M32 32V8M32 32H56M32 32V56M8 20H20V32H32\" stroke=\"#2f9bff\" stroke-width=\"7\" stroke-linecap=\"round\" fill=\"none\"/><path d=\"M8 44H20\" stroke=\"#8a96a3\" stroke-width=\"7\" stroke-linecap=\"round\"/><circle cx=\"32\" cy=\"32\" r=\"8\" fill=\"#2f9bff\" stroke=\"#fff\" stroke-width=\"2\"/><path d=\"M50 50l6-5 6 5v7H50z\" fill=\"#ffd166\"/></svg>",
       "tipo": "Puzzles",
-      "v": "3",
+      "v": "4",
       "file": "canerias.js",
-      "size": 14398,
-      "sha256": "7c298872a57f00a6bd4496a9296d92b52980c25a787fa0199b073a61502ac869"
+      "size": 17098,
+      "sha256": "ba4f060ffae7f063cf4a940bbe00eb02f0eeb32883da20e3ceac78923f806b3c"
     },
     {
       "id": "nonograma",
