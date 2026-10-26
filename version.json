@@ -1,7 +1,7 @@
 {
-  "version": "2.51.1",
-  "file": "versiones/base-app-2.51.1.zip",
-  "sha256": "7717e02d4a4a4cefd855c6ea863eb1628a8f7210af4a0eabce2d7a6816769900",
-  "size": 563869,
-  "notes": "Al tocar una ventana minimizada o tapada en la barra de Base, vuelve a aparecer adelante y en su tamaño."
+  "version": "2.51.2",
+  "file": "versiones/base-app-2.51.2.zip",
+  "sha256": "87c0063519ada05a346e11162c34f42b38cbb50fd0b928d32a916d2dc30cedb5",
+  "size": 564264,
+  "notes": "Opera vuelve a aparecer al tocarla en la barra después de minimizarla, y la barra del escritorio minimalista ya no queda tapada por las ventanas maximizadas."
 }
