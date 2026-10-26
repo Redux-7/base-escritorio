@@ -1,7 +1,7 @@
 {
-  "version": "2.52.0",
-  "file": "versiones/base-app-2.52.0.zip",
-  "sha256": "e5ef4946132030f3e5dbbacc6b32e3486aefd83c10f0c00eadcfdf8adac1a5c3",
-  "size": 579692,
-  "notes": "Mini juegos que se ajustan a la pantalla; ventana de Archivos con tamaño ajustable, barra de acciones y el menú completo de Windows; clic derecho en el escritorio de Base como en Windows; Base más liviano."
+  "version": "2.53.0",
+  "file": "versiones/base-app-2.53.0.zip",
+  "sha256": "8050f62b56b8b4c0bac262d63b70ced077003f8382a65d0b8e4db3a85966fafe",
+  "size": 594861,
+  "notes": "Ventanas minimizadas que ya no desaparecen, discos externos con su espacio en Archivos, ventanas de Base que pasan al frente con un clic, 3 estilos nuevos con 5 fondos cada uno, Wi-Fi para elegir redes y Bluetooth con dispositivos, minimizar/cerrar escondidos y tableros en órbita."
 }
