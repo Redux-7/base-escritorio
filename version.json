@@ -1,7 +1,7 @@
 {
-  "version": "2.51.3",
-  "file": "versiones/base-app-2.51.3.zip",
-  "sha256": "8d1590e62283e8648c5bd12d24e1615e4ab822142c16957be70fec697983de6c",
-  "size": 564636,
-  "notes": "Con Base en el segundo monitor, la barra de Base queda reservada y las ventanas maximizadas ya no la tapan."
+  "version": "2.51.4",
+  "file": "versiones/base-app-2.51.4.zip",
+  "sha256": "c6431153efc5b0e8a5843babc385c87ee92ec2c5c93ed46c899027a42661085f",
+  "size": 565428,
+  "notes": "La barra del escritorio minimalista se vuelve a reservar sola si Windows la suelta: las ventanas maximizadas ya no la tapan (también en el segundo monitor). El botón Salir de Base se lee bien."
 }
