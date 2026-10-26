@@ -1,7 +1,7 @@
 {
-  "version": "2.51.0",
-  "file": "versiones/base-app-2.51.0.zip",
-  "sha256": "731e458391a25c954771e4a325009402f823444e17902ca5f4abe018ecfd2e6f",
-  "size": 563571,
-  "notes": "Botones para los escritorios de Windows y para ir y volver del escritorio de Windows, Base en el segundo monitor, estilo de escritorio para todos los tableros y más estabilidad."
+  "version": "2.51.1",
+  "file": "versiones/base-app-2.51.1.zip",
+  "sha256": "7717e02d4a4a4cefd855c6ea863eb1628a8f7210af4a0eabce2d7a6816769900",
+  "size": 563869,
+  "notes": "Al tocar una ventana minimizada o tapada en la barra de Base, vuelve a aparecer adelante y en su tamaño."
 }
