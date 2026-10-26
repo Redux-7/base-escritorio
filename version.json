@@ -1,7 +1,7 @@
 {
-  "version": "2.51.4",
-  "file": "versiones/base-app-2.51.4.zip",
-  "sha256": "c6431153efc5b0e8a5843babc385c87ee92ec2c5c93ed46c899027a42661085f",
-  "size": 565428,
-  "notes": "La barra del escritorio minimalista se vuelve a reservar sola si Windows la suelta: las ventanas maximizadas ya no la tapan (también en el segundo monitor). El botón Salir de Base se lee bien."
+  "version": "2.51.5",
+  "file": "versiones/base-app-2.51.5.zip",
+  "sha256": "5cc75d8178a24a6269e4676d3a7e86d5783919e2d4c83c101449c1e032f66367",
+  "size": 565665,
+  "notes": "Al tocar el botón para ir al escritorio de Windows también aparece la barra de Windows; al volver a Base queda todo como estaba."
 }
