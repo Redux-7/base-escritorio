@@ -1,7 +1,7 @@
 {
-  "version": "2.51.2",
-  "file": "versiones/base-app-2.51.2.zip",
-  "sha256": "87c0063519ada05a346e11162c34f42b38cbb50fd0b928d32a916d2dc30cedb5",
-  "size": 564264,
-  "notes": "Opera vuelve a aparecer al tocarla en la barra después de minimizarla, y la barra del escritorio minimalista ya no queda tapada por las ventanas maximizadas."
+  "version": "2.51.3",
+  "file": "versiones/base-app-2.51.3.zip",
+  "sha256": "8d1590e62283e8648c5bd12d24e1615e4ab822142c16957be70fec697983de6c",
+  "size": 564636,
+  "notes": "Con Base en el segundo monitor, la barra de Base queda reservada y las ventanas maximizadas ya no la tapan."
 }
