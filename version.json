@@ -1,7 +1,7 @@
 {
-  "version": "2.53.0",
-  "file": "versiones/base-app-2.53.0.zip",
-  "sha256": "8050f62b56b8b4c0bac262d63b70ced077003f8382a65d0b8e4db3a85966fafe",
-  "size": 594861,
-  "notes": "Ventanas minimizadas que ya no desaparecen, discos externos con su espacio en Archivos, ventanas de Base que pasan al frente con un clic, 3 estilos nuevos con 5 fondos cada uno, Wi-Fi para elegir redes y Bluetooth con dispositivos, minimizar/cerrar escondidos y tableros en órbita."
+  "version": "2.54.0",
+  "file": "versiones/base-app-2.54.0.zip",
+  "sha256": "c2cec615f078bd336b5f2ba2d9a3bfa68080869c66256cc3fa9624a7c0be4591",
+  "size": 599241,
+  "notes": "Tableros que se abren como una flor, widgets que se mueven y se agrandan en el escritorio minimalista sin pisarse, mazos nuevos y botones más claros en Truco, Chinchón y Escoba (Chinchón de 40 con comodines, cantos del Truco con voz), y dos juegos nuevos en la Tienda: Blackjack y Destrabá."
 }

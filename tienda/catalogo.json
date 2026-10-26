@@ -7,22 +7,22 @@
       "c": "#2a5aa8",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#5e3b1f\"/><g transform=\"rotate(-14 22 34)\"><rect x=\"9\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><path d=\"M21 20l2.6 18h-5.2z\" fill=\"#4c80d0\" stroke=\"#1d3c70\"/><rect x=\"15.5\" y=\"37\" width=\"11\" height=\"2.4\" fill=\"#d9a640\"/></g><g transform=\"rotate(12 42 34)\"><rect x=\"30\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><path d=\"M39.8 44c-1.2-6-2.2-12-1.4-17 .6-2.8 6-2.8 6.6 0 .8 5-.2 11-1.4 17z\" fill=\"#5d9a3f\" stroke=\"#2b5220\"/></g><path d=\"M6 58h52\" stroke=\"#f0d9a8\" stroke-width=\"2\"/></svg>",
       "tipo": "Cartas",
-      "v": "2",
+      "v": "3",
       "file": "truco.js",
-      "size": 37679,
-      "sha256": "ce89978cb3b271ba7891d718df85f91d9f73f3a38a0058b8b9a74541253798c9"
+      "size": 49178,
+      "sha256": "33821a34fa09226b2d1ffe9caa493e47ec4f8ed6f882542b9efac5f663ea4f90"
     },
     {
       "id": "chinchon",
       "n": "Chinchón",
-      "d": "Armá juegos y escaleras con naipes españoles y cortá antes que la compu (de 1 a 3 rivales).",
+      "d": "Armá juegos y escaleras con naipes españoles y cortá antes que la compu (de 1 a 3 rivales). Con mazo de 40, 48 o 50 cartas, con o sin comodines.",
       "c": "#b02a20",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1b5232\"/><g transform=\"rotate(-18 20 40)\"><rect x=\"8\" y=\"18\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"19\" y=\"40\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">5</text></g><rect x=\"21\" y=\"14\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"32\" y=\"36\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">6</text><g transform=\"rotate(18 44 40)\"><rect x=\"34\" y=\"18\" width=\"22\" height=\"34\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"45\" y=\"40\" font-size=\"13\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#2a5aa8\" font-family=\"Georgia,serif\">7</text></g></svg>",
       "tipo": "Cartas",
-      "v": "2",
+      "v": "3",
       "file": "chinchon.js",
-      "size": 34974,
-      "sha256": "438c3d58bbf6cbab590f97b6dd8beb15b6b40eaa71863dd470f3ab3dfcbd78ba"
+      "size": 46464,
+      "sha256": "435863402376a3af7c127aac3ac9a9200ed8f8c347594e80f1cb45d269a2f7d8"
     },
     {
       "id": "escoba",
@@ -31,10 +31,10 @@
       "c": "#2f7d4a",
       "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#2f7d4a\"/><g transform=\"rotate(-12 22 34)\"><rect x=\"10\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><circle cx=\"22\" cy=\"32\" r=\"6\" fill=\"#e2b13c\" stroke=\"#8f650f\"/></g><g transform=\"rotate(10 42 34)\"><rect x=\"30\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fbf6ea\" stroke=\"#3a3328\"/><text x=\"42\" y=\"38\" font-size=\"14\" font-weight=\"800\" text-anchor=\"middle\" fill=\"#b02a20\" font-family=\"Georgia,serif\">15</text></g></svg>",
       "tipo": "Cartas",
-      "v": "2",
+      "v": "3",
       "file": "escoba.js",
-      "size": 31071,
-      "sha256": "f3f720232e18b619128681a36a4597b2616ab85c63e1e4e58d9a415e36c49bad"
+      "size": 42432,
+      "sha256": "f7d3e7b0453c5d24576fb2ff6e39535ec4c9c5298ce05c8d35e634c38cf9a7f3"
     },
     {
       "id": "adivina",
@@ -263,6 +263,30 @@
       "file": "nonograma.js",
       "size": 11839,
       "sha256": "db8471b8311487da38b9809602de30d825e869f69a0358806227c14590dabcc7"
+    },
+    {
+      "id": "blackjack",
+      "n": "Blackjack",
+      "d": "El 21 contra la banca: pedí, plantate, doblá o dividí. Con fichas de mentira y una ayuda.",
+      "c": "#1d4f8a",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#1b5232\"/><g transform=\"rotate(-12 24 34)\"><rect x=\"10\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fff\" stroke=\"#c9ccd4\"/><text x=\"15\" y=\"24\" font-size=\"8\" font-weight=\"800\" fill=\"#1d1f2b\" font-family=\"sans-serif\">A</text><path d=\"M22 26c2 3 6 5 6 9 0 3-3 4-5 2.6l1 2.4h-4l1-2.4c-2 1.4-5 .4-5-2.6 0-4 4-6 6-9z\" fill=\"#1d1f2b\"/></g><g transform=\"rotate(10 42 34)\"><rect x=\"30\" y=\"14\" width=\"24\" height=\"36\" rx=\"3\" fill=\"#fff\" stroke=\"#c9ccd4\"/><text x=\"35\" y=\"24\" font-size=\"8\" font-weight=\"800\" fill=\"#c8232c\" font-family=\"sans-serif\">K</text><text x=\"42\" y=\"40\" font-size=\"14\" font-weight=\"900\" text-anchor=\"middle\" fill=\"#b8860b\" font-family=\"Georgia,serif\">K</text></g><circle cx=\"50\" cy=\"52\" r=\"7\" fill=\"#d23a2e\" stroke=\"#fff\" stroke-width=\"1.5\"/></svg>",
+      "tipo": "Cartas",
+      "v": "1",
+      "file": "blackjack.js",
+      "size": 20780,
+      "sha256": "c5de1fdf04f4ef45d3b204b7b7f5becf02efd8749f7cdab8b4aec5abeb55b490"
+    },
+    {
+      "id": "destraba",
+      "n": "Destrabá",
+      "d": "Sacá el bloque deslizando las demás piezas. Tres versiones: clásico, sobre hielo y bloque grande, con más de 300 niveles.",
+      "c": "#a8442e",
+      "art": "<svg viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"8\" fill=\"#9c6c42\"/><rect x=\"6\" y=\"6\" width=\"52\" height=\"52\" rx=\"4\" fill=\"#cfa477\"/><rect x=\"8\" y=\"8\" width=\"7\" height=\"22\" rx=\"2.5\" fill=\"#3f8fd6\"/><rect x=\"17\" y=\"8\" width=\"24\" height=\"7\" rx=\"2.5\" fill=\"#46a35e\"/><rect x=\"42\" y=\"8\" width=\"7\" height=\"22\" rx=\"2.5\" fill=\"#8b5fd0\"/><rect x=\"10\" y=\"25\" width=\"22\" height=\"9\" rx=\"3\" fill=\"#d8342c\"/><rect x=\"34\" y=\"36\" width=\"7\" height=\"20\" rx=\"2.5\" fill=\"#e0a33a\"/><rect x=\"8\" y=\"46\" width=\"24\" height=\"9\" rx=\"2.5\" fill=\"#2fa8a0\"/><path d=\"M58 25v10l4-5z\" fill=\"#fff\"/><path d=\"M52 30h6\" stroke=\"#fff\" stroke-width=\"2.4\" stroke-linecap=\"round\"/></svg>",
+      "tipo": "Puzzles",
+      "v": "1",
+      "file": "destraba.js",
+      "size": 37702,
+      "sha256": "45e58cbbf8c7a94cd7321ff7385af2d6f98fc50c1c7bba36991b0e6ab5786269"
     }
   ]
 }
