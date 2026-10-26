@@ -1,7 +1,7 @@
 {
-  "version": "2.51.5",
-  "file": "versiones/base-app-2.51.5.zip",
-  "sha256": "5cc75d8178a24a6269e4676d3a7e86d5783919e2d4c83c101449c1e032f66367",
-  "size": 565665,
-  "notes": "Al tocar el botón para ir al escritorio de Windows también aparece la barra de Windows; al volver a Base queda todo como estaba."
+  "version": "2.52.0",
+  "file": "versiones/base-app-2.52.0.zip",
+  "sha256": "e5ef4946132030f3e5dbbacc6b32e3486aefd83c10f0c00eadcfdf8adac1a5c3",
+  "size": 579692,
+  "notes": "Mini juegos que se ajustan a la pantalla; ventana de Archivos con tamaño ajustable, barra de acciones y el menú completo de Windows; clic derecho en el escritorio de Base como en Windows; Base más liviano."
 }
