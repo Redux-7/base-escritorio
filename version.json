@@ -1,7 +1,7 @@
 {
-  "version": "2.54.1",
-  "file": "versiones/base-app-2.54.1.zip",
-  "sha256": "ba1aeaa2f28e0e21af2ee40c57e271d6faf56bc4b167110eefc97988d6b2642c",
-  "size": 600640,
-  "notes": "Arreglos de widgets: el botón del clima vuelve a esconderlos, nuevo botón \"✎ Widgets\" para agregar o quitar (incluido reloj, clima, música y tarjetas), y en Streaming, Juegos y demás tableros los widgets ya se mueven, cambian de lugar y se achican."
+  "version": "2.55.0",
+  "file": "versiones/base-app-2.55.0.zip",
+  "sha256": "7a1874a487e171c889a0d3ad4d9b059e9d842f2ca3a59283cfa097fbfcf59b16",
+  "size": 604023,
+  "notes": "Escritorio nuevo V3: la portada con el reloj grande del de siempre y los widgets movibles del minimalista, con la hora a la derecha de la barra. Y Esta semana ahora muestra la Fórmula 1, los partidos de tu equipo, feriados, fechas especiales y la luna."
 }
